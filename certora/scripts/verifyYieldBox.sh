@@ -4,6 +4,7 @@ certoraRun  certora/munged/YieldBox.sol \
     certora/helpers/DummyERC721A.sol certora/helpers/DummyERC1155A.sol \
     certora/harness/MasterContractHarness.sol \
     certora/munged/YieldBoxURIBuilder.sol certora/munged/ERC1155TokenReceiver.sol \
+    certora/munged/strategies/SimpleMintStrategy.sol \
     --verify YieldBox:certora/spec/yieldBox.spec \
     --solc solc8.9 \
     --staging \
