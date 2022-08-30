@@ -2,8 +2,10 @@
 pragma solidity 0.8.9;
 pragma experimental ABIEncoderV2;
 
-import "@boringcrypto/boring-solidity/contracts/interfaces/IERC20.sol";
-import "@boringcrypto/boring-solidity/contracts/libraries/BoringERC20.sol";
+// import "@boringcrypto/boring-solidity/contracts/interfaces/IERC20.sol";
+// import "@boringcrypto/boring-solidity/contracts/libraries/BoringERC20.sol";
+import "../boring_stuff/interfaces/IERC20.sol";
+import "../boring_stuff/libraries/BoringERC20.sol";
 import "../enums/YieldBoxTokenType.sol";
 import "../interfaces/IStrategy.sol";
 

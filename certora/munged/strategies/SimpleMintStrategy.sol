@@ -10,6 +10,7 @@ pragma solidity 0.8.9;
 
 import "../enums/YieldBoxTokenType.sol";
 import "../interfaces/IStrategy.sol";
+import {BaseStrategy} from "./BaseStrategy.sol";
 
 
 // DUMMY INTERFAES - just what needed
@@ -32,7 +33,7 @@ interface IERC1155 {
 }
 
 
-contract SimpleMintStrategy is BaseStrategy {
+contract SimpleMintStrategy is BaseStrategy{
     // A single token strategy that just mints more of the token for each deposit.
     // This strategy assumes the token is mintable and that it is the minter for it.
     // 
@@ -85,6 +86,7 @@ contract SimpleMintStrategy is BaseStrategy {
     }
 
     function _deposited(uint256 amount) internal override {
+        amount = 0; //silence a warning
         _mint();
     }
 
@@ -102,5 +104,13 @@ contract SimpleMintStrategy is BaseStrategy {
         else {
             IERC1155(tokenAddress).safeTransferFrom(address(this), to, tokenId, amount, "");
         }        
+    }
+
+    function description() external pure returns (string memory description_) {
+        return "A simple mint-based strategy. MOCK CONTRACT";
+    }
+
+    function name() external pure returns (string memory name_) {
+        return "SimpleMintStrategy";
     }
 }
