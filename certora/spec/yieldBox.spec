@@ -62,6 +62,25 @@ rule sanity(method f)
 }
 
 
+invariant differentAssetdifferentAssetId(uint i, uint j)
+    asset[i] != asset[j] <=> i != j
+
+invariant idsVsAssets(Asset asset, uint i)
+    ids[asset] == 0 => assets[i] != asset &&
+    ids[assets[i]] == i
+
+invariant erc20HasTokenIdZero(Asset asset)
+    asset.tokenType == TokenType.ERC20 && asset.tokenId != 0 =>
+    ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId] == 0
+
+invariant tokenTypeValidity(Asset asset)
+    asset.tokenType > 4 => _tokenBalanceOf(asset) == 0
+    
+
+rule withdrawIntegrity(){
+    env e;
+    
+}
 ////////////////////////////////////////////////////////////////////////////
 //                       Helper Functions                                 //
 ////////////////////////////////////////////////////////////////////////////
