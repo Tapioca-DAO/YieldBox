@@ -26,4 +26,8 @@ contract YieldBoxHarness is YieldBox {
     function getAssetTokenId(uint256 assetId) public view returns(uint256) {
         return assets[assetId].tokenId;
     }
+
+    function getIdFromIds(TokenType tokenType, address contractAddress, IStrategy strategy, uint256 tokenId) public view returns(uint256) {
+        return ids[tokenType][contractAddress][strategy][tokenId];
+    }
 }

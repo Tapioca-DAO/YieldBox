@@ -11,5 +11,6 @@ certoraRun  certora/harness/YieldBoxHarness.sol \
     --staging \
     --optimistic_loop \
     --send_only \
-    --msg "YieldBox - array getters check from harness"
+    --rule "$1" \
+    --msg "YieldBox - mapping check - $1"
 
