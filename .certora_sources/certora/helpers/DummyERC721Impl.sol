@@ -26,13 +26,13 @@ contract DummyERC721Impl {
         return _balances[owner];
     }
 
-    function ownerOf(uint256 tokenId) external view returns (address) {
+    function ownerOf(uint256 tokenId) public view returns (address) {
         address owner = _owners[tokenId];
         require(owner != address(0), "ERC721: invalid token ID");
         return owner;
     }
 
-    function transferFrom(address from, address to, uint256 tokenId) external payable {
+    function transferFrom(address from, address to, uint256 tokenId) public payable {
         require(_owners[tokenId] == from);
         require(to != address(0));
         
@@ -41,5 +41,13 @@ contract DummyERC721Impl {
         _balances[from] = _balances[from].sub(1);
         _balances[to] = _balances[to].add(1);
         _owners[tokenId] = to;
+    }
+
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public virtual {
+        transferFrom(from, to, tokenId);
     }
 }
