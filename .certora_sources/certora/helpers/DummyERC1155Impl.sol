@@ -63,4 +63,22 @@ contract DummyERC1155Impl {
         _balances[id][from] = _balances[id][from].sub(amount);
         _balances[id][to] = _balances[id][to].add(amount);
     }
+
+    function _mint(
+        address to,
+        uint256 id,
+        uint256 value
+    ) internal {
+        require(to != address(0), "No 0 address");
+        _balances[id][to] += value;
+    }
+
+    function mint(
+        address to,
+        uint256 id,
+        uint256 value
+    ) external {
+        _mint(to, id, value);
+    }
+
 }

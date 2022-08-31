@@ -75,7 +75,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver {
 
     /// @dev Returns the total balance of `token` this contracts holds,
     /// plus the total amount this contract thinks the strategy holds.
-    function _tokenBalanceOf(Asset storage asset) internal view returns (uint256 amount) {
+    function _tokenBalanceOf(Asset memory asset) public view returns (uint256 amount) {      // HARNESS: internal -> public; storage -> memory
         if (asset.strategy == NO_STRATEGY) {
             if (asset.tokenType == TokenType.ERC20) {
                 return IERC20(asset.contractAddress).safeBalanceOf(address(this));

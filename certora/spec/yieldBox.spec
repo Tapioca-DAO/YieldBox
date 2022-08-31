@@ -33,6 +33,12 @@ methods {
     contractAddress() returns(address)                                                                              => DISPATCHER(true)
     tokenId() returns(uint256)                                                                                      => DISPATCHER(true)
     withdraw(address, uint256)                                                                                      => DISPATCHER(true)
+
+    // DummyERC1155Imp.sol
+    mint(address, uint256, uint256)                                                                                 => DISPATCHER(true)
+
+    // DummyERC721Imp.sol
+    ownerOf(uint256) returns(address)                                                                               => DISPATCHER(true)
 }
 
 

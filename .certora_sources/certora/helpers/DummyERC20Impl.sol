@@ -54,4 +54,13 @@ contract DummyERC20Impl {
         a[sender][msg.sender] = sub(a[sender][msg.sender], amount);
         return true;
     }
+
+    function mint(address account, uint256 amount) external {
+        _mint(account, amount);
+    }
+
+    function _mint(address user, uint256 amount) internal {
+        t += amount;
+        b[user] += amount;
+    }
 }
