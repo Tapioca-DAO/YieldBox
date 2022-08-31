@@ -1,6 +1,7 @@
 import "erc20.spec"
 import "otherTokens.spec"
 
+using AssetRegister as register
 
 ////////////////////////////////////////////////////////////////////////////
 //                      Methods                                           //
@@ -62,25 +63,61 @@ rule sanity(method f)
 }
 
 
-invariant differentAssetdifferentAssetId(uint i, uint j)
-    asset[i] != asset[j] <=> i != j
+// invariant differentAssetdifferentAssetId(register.Asset[] a, uint i, uint j)
+//     // assets[i] != assets[j] <=> i != j
+//     a[i].tokenType != a[j].tokenType ||
+//     a[i].contractAddress != a[j].contractAddress ||
+//     a[i].strategy != a[j].strategy ||
+//     a[i].tokenId != a[j].tokenId
+//     <=>
+//     i != j
 
-invariant idsVsAssets(Asset asset, uint i)
-    ids[asset] == 0 => assets[i] != asset &&
-    ids[assets[i]] == i
+invariant idsVsAssets(register.Asset asset, uint i)
+    register.ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId] == 0 =>
+        assets[i] != asset &&
+        register.ids[assets[i].tokenType][assets[i].contractAddress][assets[i].strategy][assets[i].tokenId] == i
 
-invariant erc20HasTokenIdZero(Asset asset)
-    asset.tokenType == TokenType.ERC20 && asset.tokenId != 0 =>
-    ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId] == 0
+// invariant erc20HasTokenIdZero(register.Asset asset)
+//     asset.tokenType == TokenType.ERC20 && asset.tokenId != 0 =>
+//     ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId] == 0
 
-invariant tokenTypeValidity(Asset asset)
-    asset.tokenType > 4 => _tokenBalanceOf(asset) == 0
+// invariant tokenTypeValidity(register.Asset asset)
+//     asset.tokenType > 4 => _tokenBalanceOf(asset) == 0
     
 
 rule withdrawIntegrity(){
     env e;
-    
+
+    uint amountOut; uint shareOut;
+    uint assetId; uint amount; uint share;
+    address from; address to;
+
+    uint balanceBefore = balanceOf(e,from, assetId);
+    amountOut, shareOut = withdraw(e,assetId, from, to, amount, share);
+
+    assert amountOut == 0 <=> shareOut == 0;
+    assert amountOut == 0 && shareOut == 0 <=> amount == 0 && share == 0;
+    assert balanceBefore == 0 => shareOut == 0;
 }
+
+// rule moreDepositMoreShares(){
+//     env e;
+//     uint amountOut1; uint shareOut1; uint amount1;
+//     uint amountOut2; uint shareOut2; uint amount2;
+//     uint tokenId;
+//     TokenType tokenType;
+//     address contractAddress;
+//     address from; address to;
+//     IStrategy strategy;
+
+
+//     storage init = lastStorage;
+    
+//     amountOut1, shareOut1 = deposit(tokenType, contractAddress, strategy, tokenId, from, to, amount1, 0);
+//     amountOut1, shareOut1 = deposit(tokenType, contractAddress, strategy, tokenId, from, to, amount2, 0) at init;
+
+//     assert  amount2 > amount1 => shareOut2 > shareOut1
+// }
 ////////////////////////////////////////////////////////////////////////////
 //                       Helper Functions                                 //
 ////////////////////////////////////////////////////////////////////////////
