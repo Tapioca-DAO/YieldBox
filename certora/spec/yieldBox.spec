@@ -2,6 +2,7 @@ import "erc20.spec"
 import "otherTokens.spec"
 
 using AssetRegister as register
+using YieldBoxTokenType as tokentype
 
 ////////////////////////////////////////////////////////////////////////////
 //                      Methods                                           //
@@ -62,7 +63,7 @@ rule sanity(method f)
 	assert false;
 }
 
-
+// If one of the asset parameters is different then assetId different 
 // invariant differentAssetdifferentAssetId(register.Asset[] a, uint i, uint j)
 //     // assets[i] != assets[j] <=> i != j
 //     a[i].tokenType != a[j].tokenType ||
@@ -72,19 +73,23 @@ rule sanity(method f)
 //     <=>
 //     i != j
 
-invariant idsVsAssets(register.Asset asset, uint i)
-    register.ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId] == 0 =>
-        assets[i] != asset &&
-        register.ids[assets[i].tokenType][assets[i].contractAddress][assets[i].strategy][assets[i].tokenId] == i
 
-// invariant erc20HasTokenIdZero(register.Asset asset)
-//     asset.tokenType == TokenType.ERC20 && asset.tokenId != 0 =>
-//     ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId] == 0
+// Ids vs assets
+// invariant idsVsAssets(register.Asset asset, uint i)
+//     register.ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId] == 0 =>
+//         assets[i] != asset &&
+//         register.ids[assets[i].tokenType][assets[i].contractAddress][assets[i].strategy][assets[i].tokenId] == i
+
+
+// An asset of type ERC20 got a tokenId == 0
+invariant erc20HasTokenIdZero(register.Asset asset, tokentype.TokenType tType)
+    asset.tokenType == tType.ERC20 && asset.tokenId != 0 =>
+    ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId] == 0
 
 // invariant tokenTypeValidity(register.Asset asset)
 //     asset.tokenType > 4 => _tokenBalanceOf(asset) == 0
     
-
+// Integrity of withdraw()
 rule withdrawIntegrity(){
     env e;
 
@@ -100,24 +105,58 @@ rule withdrawIntegrity(){
     assert balanceBefore == 0 => shareOut == 0;
 }
 
-// rule moreDepositMoreShares(){
-//     env e;
-//     uint amountOut1; uint shareOut1; uint amount1;
-//     uint amountOut2; uint shareOut2; uint amount2;
-//     uint tokenId;
-//     TokenType tokenType;
-//     address contractAddress;
-//     address from; address to;
-//     IStrategy strategy;
+// The more deposited the more shares received
+rule moreDepositMoreShares(){
+    env e;
+    uint amountOut1; uint shareOut1; uint amount1;
+    uint amountOut2; uint shareOut2; uint amount2;
+    uint tokenId;
+    uint share = 0; // forcing it to use amount
+    TokenType tokenType;
+    address contractAddress;
+    address from; address to;
+    IStrategy strategy;
 
 
-//     storage init = lastStorage;
+    storage init = lastStorage;
     
-//     amountOut1, shareOut1 = deposit(tokenType, contractAddress, strategy, tokenId, from, to, amount1, 0);
-//     amountOut1, shareOut1 = deposit(tokenType, contractAddress, strategy, tokenId, from, to, amount2, 0) at init;
+    amountOut1, shareOut1 = deposit(e, tokenType, contractAddress, strategy, tokenId, from, to, amount1, share);
+    amountOut2, shareOut2 = deposit(e, tokenType, contractAddress, strategy, tokenId, from, to, amount2, share) at init;
 
-//     assert  amount2 > amount1 => shareOut2 > shareOut1
+    assert  amount2 > amount1 => shareOut2 > shareOut1;
+}
+
+// Only change in strategy profit could affect the ratio (shares to amount)
+rule whoCanAffectRatio(){
+    env e;
+    register.Asset asset;
+
+    uint strategyBalanceBefore = asset.strategy.currentBalance(e);
+    uint ratioBefore = _tokenBalanceOf(e,assets[assetId]) / totalSupply[assetId];
+    calldataarg args;
+    f(e,args)
+    uint strategyBalanceAfter = asset.strategy.currentBalance(e);
+    uint ratioBeforeAfter = _tokenBalanceOf(e,assets[assetId]) / totalSupply[assetId];
+
+    assert ratioAfter != ratioBefore <=> strategyBalanceAfter != strategyBalanceBefore;
+}
+
+
+// if a balanceOf an NFT tokenType asset has changed by more than 1 it must have been transferMultiple() called
+// rule integrityOfNFTTransfer(){
+//     env e;
+//     uint supplyBefore = totalSupply[assetId];
+//     calldataarg args;
+//     f(e,args);
+//     uint supplyAfter = totalSupply[assetId];
+
+//     uint diff;
+//     if (supplyBefore > supplyAfter) {diff = supplyBefore - supplyAfter}
+//     else {diff = supplyAfter - supplyBefore}
+
+//     assert diff > 1 => f.selector == transferMultiple().selector;
 // }
+
 ////////////////////////////////////////////////////////////////////////////
 //                       Helper Functions                                 //
 ////////////////////////////////////////////////////////////////////////////
