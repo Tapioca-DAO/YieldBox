@@ -85,9 +85,14 @@ contract SimpleMintStrategy is BaseStrategy{
         }
     }
 
+    // Public function to simulate reward generation
+    function getGains() public {
+        _mint();
+    }
+
     function _deposited(uint256 amount) internal override {
         amount = 0; //silence a warning
-        _mint();
+        // _mint();
     }
 
     function _withdraw(address to, uint256 amount) internal override {        
