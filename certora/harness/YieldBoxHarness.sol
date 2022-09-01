@@ -7,12 +7,14 @@ import "../munged/AssetRegister.sol";
 contract YieldBoxHarness is YieldBox {
     constructor(IWrappedNative wrappedNative_, YieldBoxURIBuilder uriBuilder_) YieldBox(wrappedNative_, uriBuilder_) {}
 
+    // all these functions can revert
     function getAssetArrayElement(uint256 assetId) public view returns(Asset memory) {
         return assets[assetId];
     }
 
     function getAssetTokenType(uint256 assetId) public view returns(TokenType) {
         return assets[assetId].tokenType;
+        // return assets.length <= assetId ? TokenType.None : assets[assetId].tokenType;
     }
 
     function getAssetAddress(uint256 assetId) public view returns(address) {
@@ -32,10 +34,11 @@ contract YieldBoxHarness is YieldBox {
     }
 
     function assetsIdentical(uint256 i, uint256 j) public view returns(bool) {
-        return assets[i].tokenType == assets[j].tokenType &&
+        bool isIdentical = assets[i].tokenType == assets[j].tokenType &&
                assets[i].contractAddress == assets[j].contractAddress &&
                assets[i].strategy == assets[j].strategy &&
-               assets[i].tokenId == assets[j].tokenId ;
+               assets[i].tokenId == assets[j].tokenId;
+        return isIdentical;
     }        
 
     function assetsIdentical(uint256 i, Asset memory asset) public view returns(bool) {

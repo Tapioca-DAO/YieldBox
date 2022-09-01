@@ -17,3 +17,8 @@ yarn-error.log
 deployments/localhost
 typechain-types
 workbench/contracts.json
+
+# Certora
+.certora*
+.last_confs
+certora_*
