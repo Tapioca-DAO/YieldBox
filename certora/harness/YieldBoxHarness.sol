@@ -30,4 +30,18 @@ contract YieldBoxHarness is YieldBox {
     function getIdFromIds(TokenType tokenType, address contractAddress, IStrategy strategy, uint256 tokenId) public view returns(uint256) {
         return ids[tokenType][contractAddress][strategy][tokenId];
     }
+
+    function assetsIdentical(uint256 i, uint256 j) public view returns(bool) {
+        return assets[i].tokenType == assets[j].tokenType &&
+               assets[i].contractAddress == assets[j].contractAddress &&
+               assets[i].strategy == assets[j].strategy &&
+               assets[i].tokenId == assets[j].tokenId ;
+    }        
+
+    function assetsIdentical(uint256 i, Asset memory asset) public view returns(bool) {
+        return assets[i].tokenType == asset.tokenType &&
+               assets[i].contractAddress == asset.contractAddress &&
+               assets[i].strategy == asset.strategy &&
+               assets[i].tokenId == asset.tokenId ;
+    }
 }

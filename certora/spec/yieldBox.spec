@@ -2,8 +2,7 @@ import "erc20.spec"
 import "otherTokens.spec"
 
 using AssetRegister as register
-using YieldBoxTokenType as tokentype
-
+using DummyERC20A as TType
 ////////////////////////////////////////////////////////////////////////////
 //                      Methods                                           //
 ////////////////////////////////////////////////////////////////////////////
@@ -40,6 +39,9 @@ methods {
 
     // DummyERC721Imp.sol
     ownerOf(uint256) returns(address)                                                                               => DISPATCHER(true)
+
+    // getters
+    //getAssetArrayElement(uint256) returns (register.Asset) envfree
 }
 
 
@@ -69,28 +71,28 @@ rule sanity(method f)
 	assert false;
 }
 
+// this rule fails due to dynamic array. use tomer's solution
 // If one of the asset parameters is different then assetId different 
-// invariant differentAssetdifferentAssetId(register.Asset[] a, uint i, uint j)
-//     // assets[i] != assets[j] <=> i != j
-//     a[i].tokenType != a[j].tokenType ||
-//     a[i].contractAddress != a[j].contractAddress ||
-//     a[i].strategy != a[j].strategy ||
-//     a[i].tokenId != a[j].tokenId
-//     <=>
-//     i != j
+invariant differentAssetdifferentAssetId(uint i, uint j, env e)
+    // assets[i] != assets[j] <=> i != j
+    !assetsIdentical(e,i,j)
+    <=>
+    i != j
 
 
 // Ids vs assets
-// invariant idsVsAssets(register.Asset asset, uint i)
-//     register.ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId] == 0 =>
-//         assets[i] != asset &&
-//         register.ids[assets[i].tokenType][assets[i].contractAddress][assets[i].strategy][assets[i].tokenId] == i
+invariant idsVsAssets(register.Asset asset, uint i, env e)
+    getIdFromIds(e,asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0 =>
+        // assets[i] != asset &&
+        !assetsIdentical(e,i,asset) &&
+        getIdFromIds(e,getAssetTokenType(e,i),getAssetAddress(e,i),getAssetStrategy(e,i),getAssetTokenId(e,i)) == i
 
 
 // An asset of type ERC20 got a tokenId == 0
-invariant erc20HasTokenIdZero(register.Asset asset, tokentype.TokenType tType)
-    asset.tokenType == tType.ERC20 && asset.tokenId != 0 =>
-    ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId] == 0
+invariant erc20HasTokenIdZero(register.Asset asset, env e)
+    asset.tokenType == TType.TokenType.ERC20 && asset.tokenId != 0 =>
+    getIdFromIds(e,asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0
+    // ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId] == 0
 
 // invariant tokenTypeValidity(register.Asset asset)
 //     asset.tokenType > 4 => _tokenBalanceOf(asset) == 0
@@ -118,10 +120,10 @@ rule moreDepositMoreShares(){
     uint amountOut2; uint shareOut2; uint amount2;
     uint tokenId;
     uint share = 0; // forcing it to use amount
-    TokenType tokenType;
+    TType.TokenType tokenType;
     address contractAddress;
     address from; address to;
-    IStrategy strategy;
+    address strategy;
 
 
     storage init = lastStorage;
@@ -133,19 +135,19 @@ rule moreDepositMoreShares(){
 }
 
 // Only change in strategy profit could affect the ratio (shares to amount)
-rule whoCanAffectRatio(){
-    env e;
-    register.Asset asset;
+// rule whoCanAffectRatio(){
+//     env e;
+//     register.Asset asset;
 
-    uint strategyBalanceBefore = asset.strategy.currentBalance(e);
-    uint ratioBefore = _tokenBalanceOf(e,assets[assetId]) / totalSupply[assetId];
-    calldataarg args;
-    f(e,args)
-    uint strategyBalanceAfter = asset.strategy.currentBalance(e);
-    uint ratioBeforeAfter = _tokenBalanceOf(e,assets[assetId]) / totalSupply[assetId];
+//     uint strategyBalanceBefore = asset.strategy.currentBalance(e);
+//     uint ratioBefore = _tokenBalanceOf(e,assets[assetId]) / totalSupply[assetId];
+//     calldataarg args;
+//     f(e,args)
+//     uint strategyBalanceAfter = asset.strategy.currentBalance(e);
+//     uint ratioBeforeAfter = _tokenBalanceOf(e,assets[assetId]) / totalSupply[assetId];
 
-    assert ratioAfter != ratioBefore <=> strategyBalanceAfter != strategyBalanceBefore;
-}
+//     assert ratioAfter != ratioBefore <=> strategyBalanceAfter != strategyBalanceBefore;
+// }
 
 
 // if a balanceOf an NFT tokenType asset has changed by more than 1 it must have been transferMultiple() called
@@ -160,8 +162,9 @@ rule whoCanAffectRatio(){
 //     if (supplyBefore > supplyAfter) {diff = supplyBefore - supplyAfter}
 //     else {diff = supplyAfter - supplyBefore}
 
-//     assert diff > 1 => f.selector == transferMultiple().selector;
+//     assert diff > 1 => f.selector == transferMultiple(address,address[],uint256,uint256[]).selector;
 // }
+
 
 ////////////////////////////////////////////////////////////////////////////
 //                       Helper Functions                                 //
