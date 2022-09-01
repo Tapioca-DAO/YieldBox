@@ -3,4 +3,4 @@ pragma solidity ^0.8.0;
 
 import "./DummyERC1155Impl.sol";
 
-contract DummyERC1155A is DummyERC1155Impl {}
+contract DummyERC1155A is DummyMintableERC1155Impl {}

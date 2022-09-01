@@ -14,7 +14,7 @@ contract DummyERC1155Impl {
     string public symbol;
 
     // Mapping from token ID to account balances
-    mapping(uint256 => mapping(address => uint256)) private _balances;
+    mapping(uint256 => mapping(address => uint256)) internal _balances;
 
     // Mapping from account to operator approvals
     // mapping(address => mapping(address => bool)) private _operatorApprovals;
@@ -59,10 +59,26 @@ contract DummyERC1155Impl {
         // DOES NOT VERIFY
     }
 
-    function _transferFrom(address from, address to, uint256 id, uint256 amount) private {
+    function _transferFrom(address from, address to, uint256 id, uint256 amount) internal {
         _balances[id][from] = _balances[id][from].sub(amount);
         _balances[id][to] = _balances[id][to].add(amount);
     }
+
+    
+
+}
+
+contract DummyMintableERC1155Impl is DummyERC1155Impl {
+    address public minter;
+
+    modifier onlyMinter() {
+        require (msg.sender == minter, "Mint callable by minter only");
+        _;
+    }
+
+    // constructor (address _minter) {
+    //     minter = _minter;
+    // }
 
     function _mint(
         address to,
@@ -77,7 +93,7 @@ contract DummyERC1155Impl {
         address to,
         uint256 id,
         uint256 value
-    ) external {
+    ) external onlyMinter() {
         _mint(to, id, value);
     }
 
