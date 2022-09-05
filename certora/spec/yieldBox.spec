@@ -40,11 +40,21 @@ methods {
     safeTransferFrom(address,address,uint256)                                                                       => DISPATCHER(true)
     dummyERC20.balanceOf(address) returns(uint256) envfree
     dummyERC20.transfer(address,uint256) returns(bool) envfree
+
     // DummyERC721Imp.sol
     ownerOf(uint256) returns(address)                                                                               => DISPATCHER(true)
+    mint(address, uint256)                                                                                          => DISPATCHER(true)
 
+
+    // Receiver.sol
+    sendTo()                                                                                                        => DISPATCHER(true)
+    
     // getters
     //getAssetArrayElement(uint256) returns (register.Asset) envfree
+
+
+    // permitToken(address,address,address,uint256,uint256,uint8,bytes32,bytes32) - permit() - disp
+
 }
 
 
@@ -66,46 +76,66 @@ methods {
 //                       Rules                                            //
 ////////////////////////////////////////////////////////////////////////////
 
-rule sanity(method f)
-{
-	env e;
-	calldataarg args;
-	f(e,args);
-	assert false;
-}
+// rule sanity(method f)
+// {
+// 	env e;
+// 	calldataarg args;
+// 	f(e,args);
+// 	assert false;
+// }
 
 // this rule fails due to dynamic array. use tomer's solution
 // If one of the asset parameters is different then assetId different 
 invariant differentAssetdifferentAssetId(uint i, uint j, env e)
     // assets[i] != assets[j] <=> i != j
-    !assetsIdentical(e,i,j)
+    !assetsIdentical(e, i, j)
     <=>
     i != j
+    filtered { f -> f.selector != batch(bytes[],bool).selector 
+                    && f.selector != uri(uint256).selector 
+                    && f.selector != name(uint256).selector 
+                    && f.selector != symbol(uint256).selector 
+                    && f.selector != decimals(uint256).selector  }
 
 
 // Ids vs assets
 invariant idsVsAssets(YieldData.Asset asset, uint i, env e)
-    getIdFromIds(e,asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0 =>
+    getIdFromIds(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0 =>
         // assets[i] != asset &&
-        !assetsIdentical(e,i,asset) &&
-        getIdFromIds(e,getAssetTokenType(e,i),getAssetAddress(e,i),getAssetStrategy(e,i),getAssetTokenId(e,i)) == i
+        !assetsIdentical1(e, i, asset) &&
+        getIdFromIds(e, getAssetTokenType(e, i), getAssetAddress(e, i), getAssetStrategy(e, i), getAssetTokenId(e, i)) == i
+        filtered { f -> f.selector != batch(bytes[],bool).selector  
+                        && f.selector != uri(uint256).selector 
+                        && f.selector != name(uint256).selector 
+                        && f.selector != symbol(uint256).selector 
+                        && f.selector != decimals(uint256).selector  }
 
 
 // An asset of type ERC20 got a tokenId == 0
 invariant erc20HasTokenIdZero(YieldData.Asset asset, env e)
     asset.tokenType == YieldData.TokenType.ERC20 && asset.tokenId != 0 =>
-    getIdFromIds(e,asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0
+    getIdFromIds(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0
     // ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId] == 0
+    filtered { f -> f.selector != batch(bytes[],bool).selector 
+                    && f.selector != uri(uint256).selector 
+                    && f.selector != name(uint256).selector 
+                    && f.selector != symbol(uint256).selector 
+                    && f.selector != decimals(uint256).selector  }
 
 // Balance of address Zero equals Zero
 invariant balanceOfAddressZero(address token)
     dummyERC20.balanceOf(0) == 0
+    filtered { f -> f.selector != batch(bytes[],bool).selector 
+                    && f.selector != uri(uint256).selector 
+                    && f.selector != name(uint256).selector 
+                    && f.selector != symbol(uint256).selector 
+                    && f.selector != decimals(uint256).selector  }
 
 // invariant tokenTypeValidity(YieldData.Asset asset)
 //     asset.tokenType > 4 => _tokenBalanceOf(asset) == 0
     
 // Integrity of withdraw()
-rule withdrawIntegrity()
+rule withdrawIntegrity() 
 {
     env e;
 
@@ -138,7 +168,6 @@ rule moreDepositMoreShares()
     address from; address to;
     address strategy;
 
-
     storage init = lastStorage;
     
     amountOut1, shareOut1 = deposit(e, tokenType, contractAddress, strategy, tokenId, from, to, amount1, share);
@@ -149,7 +178,11 @@ rule moreDepositMoreShares()
 
 // Only change in strategy profit could affect the ratio (shares to amount)
 rule whoCanAffectRatio(method f, env e)
-filtered{f-> !f.isView && f.selector != batch(bytes[],bool).selector}
+    filtered { f -> f.selector != batch(bytes[],bool).selector 
+                    && f.selector != uri(uint256).selector 
+                    && f.selector != name(uint256).selector 
+                    && f.selector != symbol(uint256).selector 
+                    && f.selector != decimals(uint256).selector  }
 {
     uint256 assetId;
     YieldData.Asset assets;
@@ -175,7 +208,11 @@ filtered{f-> !f.isView && f.selector != batch(bytes[],bool).selector}
 
 // if a balanceOf an NFT tokenType asset has changed by more than 1 it must have been transferMultiple() called
 rule integrityOfNFTTransfer(method f, env e)
-filtered{f-> !f.isView && f.selector != batch(bytes[],bool).selector}
+    filtered { f -> f.selector != batch(bytes[],bool).selector 
+                    && f.selector != uri(uint256).selector 
+                    && f.selector != name(uint256).selector 
+                    && f.selector != symbol(uint256).selector 
+                    && f.selector != decimals(uint256).selector  }
 {
     uint256 assetId;
 
@@ -207,7 +244,7 @@ rule fundsTransferredToContractWillBeLost()
 
     storage init = lastStorage;
     uint someAmount;
-    dummyERC20.transfer(currentContract,someAmount);
+    dummyERC20.transfer(currentContract, someAmount);
 
     amountOut1, shareOut1 = withdraw(e,assetId, from, to, amount, share);
     amountOut2, shareOut2 = withdraw(e,assetId, from, to, amount, share) at init;

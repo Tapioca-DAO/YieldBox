@@ -41,10 +41,10 @@ contract YieldBoxHarness is YieldBox {
         return isIdentical;
     }        
 
-    function assetsIdentical(uint256 i, Asset memory asset) public view returns(bool) {
+    function assetsIdentical1(uint256 i, Asset memory asset) public view returns(bool) {
         return assets[i].tokenType == asset.tokenType &&
                assets[i].contractAddress == asset.contractAddress &&
                assets[i].strategy == asset.strategy &&
-               assets[i].tokenId == asset.tokenId ;
+               assets[i].tokenId == asset.tokenId;
     }
 }
