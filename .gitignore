@@ -4,6 +4,8 @@ cache/
 .cache/
 coverage/
 node_modules/
+.certora_sources/
+emv-*/
 package-lock.json
 .coverage_artifacts/
 .coverage_contracts/
