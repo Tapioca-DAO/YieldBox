@@ -17,6 +17,9 @@ contract DummyERC1155Impl {
     mapping(uint256 => mapping(address => uint256)) internal _balances;
 
     // Mapping from account to operator approvals
+    mapping(address => mapping(address => bool)) private _operatorApprovals;
+
+    // Mapping from account to operator approvals
     // mapping(address => mapping(address => bool)) private _operatorApprovals;
     
     function balanceOf(address owner, uint256 tokenId) external view returns (uint256) {
@@ -64,7 +67,16 @@ contract DummyERC1155Impl {
         _balances[id][to] = _balances[id][to].add(amount);
     }
 
-    
+    function _setApprovalForAll(
+        address owner,
+        address operator,
+        bool approved
+    ) internal virtual {
+        require(owner != operator, "ERC1155: setting approval status for self");
+        _operatorApprovals[owner][operator] = approved;
+    }
+
+
 
 }
 

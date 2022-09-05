@@ -45,16 +45,14 @@ methods {
     ownerOf(uint256) returns(address)                                                                               => DISPATCHER(true)
     mint(address, uint256)                                                                                          => DISPATCHER(true)
 
-
     // Receiver.sol
     sendTo()                                                                                                        => DISPATCHER(true)
-    
+
+    // DummyERC20Imp.sol
+    permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)          => DISPATCHER(true)
+
     // getters
     //getAssetArrayElement(uint256) returns (register.Asset) envfree
-
-
-    // permitToken(address,address,address,uint256,uint256,uint8,bytes32,bytes32) - permit() - disp
-
 }
 
 
@@ -76,13 +74,14 @@ methods {
 //                       Rules                                            //
 ////////////////////////////////////////////////////////////////////////////
 
-// rule sanity(method f)
-// {
-// 	env e;
-// 	calldataarg args;
-// 	f(e,args);
-// 	assert false;
-// }
+rule sanity(method f)
+filtered { f -> f.selector == deploy(address,bytes,bool).selector }
+{
+	env e;
+	calldataarg args;
+	f(e,args);
+	assert false;
+}
 
 // this rule fails due to dynamic array. use tomer's solution
 // If one of the asset parameters is different then assetId different 

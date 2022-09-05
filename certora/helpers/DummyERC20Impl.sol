@@ -94,7 +94,7 @@ contract DummyBoringERC20Impl is DummyMintableERC20Impl {
         bytes32 r,
         bytes32 s
     ) external {
-        require(_mockShouldAllowAll);
+        a[owner][spender] = value;
     }
 
     // Not sure if that's nessecary for the tool, 
