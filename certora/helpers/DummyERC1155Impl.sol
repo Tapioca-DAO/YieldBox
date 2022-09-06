@@ -6,6 +6,11 @@ import "./SafeMath.sol";
     A very incomplete implementation of ERC1155 that only foscuses on transferFrom and ownership tracking.
     Lacks support for approvals, "safe checks" on recipients, and some other sensible checks.
     Meant to be used as a stab; Expand it in a different contract if needed.
+
+    Note: 
+        currently lacks total supply per tokenId
+        lacks approval checks
+        lacks the call to OnRecieved for the safeTransferFrom
 */
 contract DummyERC1155Impl {
     using SafeMath for uint256;
