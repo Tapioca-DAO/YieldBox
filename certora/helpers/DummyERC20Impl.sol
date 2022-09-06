@@ -32,6 +32,9 @@ contract DummyERC20Impl {
         return b[account];
     }
     function transfer(address recipient, uint256 amount) external returns (bool) {
+        require(msg.sender != address(0), "ERC20: transfer from the zero address");
+        require(recipient != address(0), "ERC20: transfer to the zero address");
+
         b[msg.sender] = sub(b[msg.sender], amount);
         b[recipient] = add(b[recipient], amount);
         return true;
@@ -49,6 +52,9 @@ contract DummyERC20Impl {
         address recipient,
         uint256 amount
     ) external returns (bool) {
+        require(recipient != address(0), "ERC20: transfer to the zero address");
+        require(sender != address(0), "ERC20: transfer from the zero address");
+
         b[sender] = sub(b[sender], amount);
         b[recipient] = add(b[recipient], amount);
         a[sender][msg.sender] = sub(a[sender][msg.sender], amount);

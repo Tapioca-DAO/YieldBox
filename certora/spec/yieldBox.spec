@@ -11,6 +11,18 @@ using DummyERC20A as dummyERC20
 methods {
     // contract methods
 
+    // harness methods 
+    getAssetArrayElement(uint256) returns((uint8, address, address, uint256)) envfree
+    getAssetsLength() returns(uint256) envfree
+    getIdFromIds(uint8, address, address, uint256) returns(uint256) envfree
+    getAssetTokenType(uint256) returns(uint8) envfree
+    getAssetAddress(uint256) returns(address) envfree
+    getAssetStrategy(uint256) returns(address) envfree
+    getAssetTokenId(uint256) returns(uint256) envfree
+    assetsIdentical(uint256, uint256) returns(bool) envfree
+    assetsIdentical1(uint256, (uint8, address, address, uint256)) returns(bool) envfree
+
+
     // helper functions from the harness
 
     // external method summaries
@@ -84,10 +96,12 @@ filtered { f -> f.selector == deploy(address,bytes,bool).selector }
 }
 
 // this rule fails due to dynamic array. use tomer's solution
+// https://vaas-stg.certora.com/output/65782/ec2fdca18740e790f252/?anonymousKey=636a5afecb33fbb0e09e6acfaf53fa7bb202ee11
+// need to rewrite as a rule to get better calltrace
 // If one of the asset parameters is different then assetId different 
 invariant differentAssetdifferentAssetId(uint i, uint j, env e)
     // assets[i] != assets[j] <=> i != j
-    !assetsIdentical(e, i, j)
+    !assetsIdentical(i, j)
     <=>
     i != j
 
@@ -96,14 +110,20 @@ invariant differentAssetdifferentAssetId(uint i, uint j, env e)
                     && f.selector != name(uint256).selector 
                     && f.selector != symbol(uint256).selector 
                     && f.selector != decimals(uint256).selector  }
+    {
+        preserved with (env e2) {
+            require i < getAssetsLength();
+            require j < getAssetsLength();
+        }
+    }
 
 
 // Ids vs assets
-invariant idsVsAssets(YieldData.Asset asset, uint i, env e)
-    (ids(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0 =>
+// if asset isn't in the map of ids, it's not in array of assets
+invariant idsVsAssets1(YieldData.Asset asset, uint i, env e)
+    ids(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0 =>      // reuire i > 0;
         // assets[i] != asset &&
-        !assetsIdentical1(e, i, asset)) &&
-        ids(e, getAssetTokenType(e, i), getAssetAddress(e, i), getAssetStrategy(e, i), getAssetTokenId(e, i)) == i
+        !assetsIdentical1(i, asset)
 
     filtered { f -> f.selector != batch(bytes[],bool).selector  
                         && f.selector != uri(uint256).selector 
@@ -111,8 +131,57 @@ invariant idsVsAssets(YieldData.Asset asset, uint i, env e)
                         && f.selector != symbol(uint256).selector 
                         && f.selector != decimals(uint256).selector  }
 
+
+invariant idsVsAssets2(YieldData.Asset asset, uint i, env e)
+        ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i
+
+    filtered { f -> f.selector != batch(bytes[],bool).selector  
+                        && f.selector != uri(uint256).selector 
+                        && f.selector != name(uint256).selector 
+                        && f.selector != symbol(uint256).selector 
+                        && f.selector != decimals(uint256).selector  }
+
+// STATUS - in progress / verified / error / timeout / etc.
+// TODO: rule description
+rule inv_idsVsAssets2(env e, env e2, method f)
+filtered { f -> f.selector != batch(bytes[],bool).selector  
+                        && f.selector != uri(uint256).selector 
+                        && f.selector != name(uint256).selector 
+                        && f.selector != symbol(uint256).selector 
+                        && f.selector != decimals(uint256).selector  } 
+{
+    uint i;
+
+    uint8 ttB = getAssetTokenType(i);
+    address addrB = getAssetAddress(i);
+    address strB = getAssetStrategy(i);
+    uint256 idB = getAssetTokenId(i);
+
+    require ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i;
+    require getAssetsLength() < max_uint - 2;
+
+    // calldataarg args;
+    // f(e, args);
+    uint8 tokenType;
+    address contractAddress;
+    address strategy;
+    uint256 tokenId;
+    
+    uint256 newAssetId = registerAsset(e, tokenType, contractAddress, strategy, tokenId);
+
+    uint8 ttA = getAssetTokenType(i);
+    address addrA = getAssetAddress(i);
+    address strA = getAssetStrategy(i);
+    uint256 idA = getAssetTokenId(i);
+
+    assert ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i, "Remember, with great power comes great responsibility.";
+}
+
+
+// verified
+// * explain preserved block
 invariant assetIdLeAssetLength(YieldData.Asset asset, uint i, env e)
-    ids(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) <= getAssetsLength(e)
+    ids(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) <= getAssetsLength()
     
     filtered { f -> f.selector != batch(bytes[],bool).selector  
                         && f.selector != uri(uint256).selector 
@@ -121,10 +190,12 @@ invariant assetIdLeAssetLength(YieldData.Asset asset, uint i, env e)
                         && f.selector != decimals(uint256).selector  }
     {
         preserved{
-            require getAssetsLength(e) < max_uint - 2;
+            require getAssetsLength() < max_uint - 2;
         }
     }
 
+
+// verified
 // An asset of type ERC20 got a tokenId == 0
 invariant erc20HasTokenIdZero(YieldData.Asset asset, env e)
     asset.tokenType == YieldData.TokenType.ERC20 && asset.tokenId != 0 =>
@@ -137,19 +208,33 @@ invariant erc20HasTokenIdZero(YieldData.Asset asset, env e)
                     && f.selector != symbol(uint256).selector 
                     && f.selector != decimals(uint256).selector  }
 
+
+// verfied
 // Balance of address Zero equals Zero
 invariant balanceOfAddressZero(address token)
-    dummyERC20.balanceOf(0) == 0
-    
+    dummyERC20.balanceOf(0) == 0 
     filtered { f -> f.selector != batch(bytes[],bool).selector 
                     && f.selector != uri(uint256).selector 
                     && f.selector != name(uint256).selector 
                     && f.selector != symbol(uint256).selector 
                     && f.selector != decimals(uint256).selector  }
 
+
+// Balance of address Zero equals Zero
+invariant balanceOfAddressZero1(address token, env e)
+    balanceOf(e, 0) == 0
+    filtered { f -> f.selector != batch(bytes[],bool).selector 
+                    && f.selector != uri(uint256).selector 
+                    && f.selector != name(uint256).selector 
+                    && f.selector != symbol(uint256).selector 
+                    && f.selector != decimals(uint256).selector  }
+
+
 // invariant tokenTypeValidity(YieldData.Asset asset)
 //     asset.tokenType > 4 => _tokenBalanceOf(asset) == 0
     
+
+// in progress
 // Integrity of withdraw()
 rule withdrawIntegrity() 
 {
@@ -171,6 +256,9 @@ rule withdrawIntegrity()
     assert strategyBalanceBefore == 0 => amountOut == 0 && shareOut == 0;
 }
 
+
+// in progress
+// need to add noDivision remainder flag
 // The more deposited the more shares received
 rule moreDepositMoreShares()
 {
@@ -192,6 +280,8 @@ rule moreDepositMoreShares()
     assert  amount2 > amount1 => shareOut2 > shareOut1;
 }
 
+
+// in progress
 // Only change in strategy profit could affect the ratio (shares to amount)
 rule whoCanAffectRatio(method f, env e)
     filtered { f -> f.selector != batch(bytes[],bool).selector 
@@ -222,6 +312,7 @@ rule whoCanAffectRatio(method f, env e)
 }
 
 
+// in progress
 // if a balanceOf an NFT tokenType asset has changed by more than 1 it must have been transferMultiple() called
 rule integrityOfNFTTransfer(method f, env e)
     filtered { f -> f.selector != batch(bytes[],bool).selector 
@@ -247,7 +338,10 @@ rule integrityOfNFTTransfer(method f, env e)
    
     assert diff > 1 => f.selector == transferMultiple(address,address[],uint256,uint256[]).selector;
 }
-////////// fails due to havoc for to.call{value: amount}(\"\")
+
+
+
+// in progress
 // Any funds transferred directly onto the YieldBox will be lost
 rule fundsTransferredToContractWillBeLost()
 {
@@ -267,9 +361,3 @@ rule fundsTransferredToContractWillBeLost()
     
     assert amountOut1 == amountOut2;
 }
-////////////////////////////////////////////////////////////////////////////
-//                       Helper Functions                                 //
-////////////////////////////////////////////////////////////////////////////
-
-// TODO: Any additional helper functions
-
