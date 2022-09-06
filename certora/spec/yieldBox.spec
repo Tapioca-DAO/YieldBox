@@ -90,6 +90,7 @@ invariant differentAssetdifferentAssetId(uint i, uint j, env e)
     !assetsIdentical(e, i, j)
     <=>
     i != j
+
     filtered { f -> f.selector != batch(bytes[],bool).selector 
                     && f.selector != uri(uint256).selector 
                     && f.selector != name(uint256).selector 
@@ -99,22 +100,37 @@ invariant differentAssetdifferentAssetId(uint i, uint j, env e)
 
 // Ids vs assets
 invariant idsVsAssets(YieldData.Asset asset, uint i, env e)
-    getIdFromIds(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0 =>
+    (ids(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0 =>
         // assets[i] != asset &&
-        !assetsIdentical1(e, i, asset) &&
-        getIdFromIds(e, getAssetTokenType(e, i), getAssetAddress(e, i), getAssetStrategy(e, i), getAssetTokenId(e, i)) == i
-        filtered { f -> f.selector != batch(bytes[],bool).selector  
+        !assetsIdentical1(e, i, asset)) &&
+        ids(e, getAssetTokenType(e, i), getAssetAddress(e, i), getAssetStrategy(e, i), getAssetTokenId(e, i)) == i
+
+    filtered { f -> f.selector != batch(bytes[],bool).selector  
                         && f.selector != uri(uint256).selector 
                         && f.selector != name(uint256).selector 
                         && f.selector != symbol(uint256).selector 
                         && f.selector != decimals(uint256).selector  }
 
+invariant assetIdLeAssetLength(YieldData.Asset asset, uint i, env e)
+    ids(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) <= getAssetsLength(e)
+    
+    filtered { f -> f.selector != batch(bytes[],bool).selector  
+                        && f.selector != uri(uint256).selector 
+                        && f.selector != name(uint256).selector 
+                        && f.selector != symbol(uint256).selector 
+                        && f.selector != decimals(uint256).selector  }
+    {
+        preserved{
+            require getAssetsLength(e) < max_uint - 2;
+        }
+    }
 
 // An asset of type ERC20 got a tokenId == 0
 invariant erc20HasTokenIdZero(YieldData.Asset asset, env e)
     asset.tokenType == YieldData.TokenType.ERC20 && asset.tokenId != 0 =>
-    getIdFromIds(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0
-    // ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId] == 0
+    // getIdFromIds(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0
+    ids(e,asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0
+
     filtered { f -> f.selector != batch(bytes[],bool).selector 
                     && f.selector != uri(uint256).selector 
                     && f.selector != name(uint256).selector 
@@ -124,6 +140,7 @@ invariant erc20HasTokenIdZero(YieldData.Asset asset, env e)
 // Balance of address Zero equals Zero
 invariant balanceOfAddressZero(address token)
     dummyERC20.balanceOf(0) == 0
+    
     filtered { f -> f.selector != batch(bytes[],bool).selector 
                     && f.selector != uri(uint256).selector 
                     && f.selector != name(uint256).selector 

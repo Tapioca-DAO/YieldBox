@@ -6,6 +6,7 @@ coverage/
 node_modules/
 .certora_sources/
 emv-*/
+certora_debug_log.txt
 package-lock.json
 .coverage_artifacts/
 .coverage_contracts/

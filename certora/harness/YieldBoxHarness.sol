@@ -12,6 +12,10 @@ contract YieldBoxHarness is YieldBox {
         return assets[assetId];
     }
 
+    function getAssetsLength() public view returns(uint256) {
+        return assets.length;
+    }
+
     function getAssetTokenType(uint256 assetId) public view returns(TokenType) {
         return assets[assetId].tokenType;
         // return assets.length <= assetId ? TokenType.None : assets[assetId].tokenType;
