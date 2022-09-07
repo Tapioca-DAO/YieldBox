@@ -101,9 +101,9 @@ filtered { f -> f.selector == deploy(address,bytes,bool).selector }
 // If one of the asset parameters is different then assetId different 
 invariant differentAssetdifferentAssetId(uint i, uint j, env e)
     // assets[i] != assets[j] <=> i != j
-    !assetsIdentical(i, j)
-    <=>
-    i != j
+    (!assetsIdentical(i, j) <=> i != j)
+        && ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i
+        && ids(e, getAssetTokenType(j), getAssetAddress(j), getAssetStrategy(j), getAssetTokenId(j)) == j
 
     filtered { f -> f.selector != batch(bytes[],bool).selector 
                     && f.selector != uri(uint256).selector 
@@ -114,6 +114,13 @@ invariant differentAssetdifferentAssetId(uint i, uint j, env e)
         preserved with (env e2) {
             require i < getAssetsLength();
             require j < getAssetsLength();
+            require i > 0 && j > 0;
+        }
+        preserved registerAsset(uint8 tt,address addr,address str,uint256 id) with (env e3) {
+            require ids(e, tt, addr, str, id) == 0 || (ids(e, tt, addr, str, id) == i || ids(e, tt, addr, str, id) == j);
+            require i < getAssetsLength();
+            require j < getAssetsLength();
+            require i > 0 && j > 0;
         }
     }
 
@@ -160,14 +167,14 @@ filtered { f -> f.selector != batch(bytes[],bool).selector
     require ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i;
     require getAssetsLength() < max_uint - 2;
 
-    // calldataarg args;
-    // f(e, args);
-    uint8 tokenType;
-    address contractAddress;
-    address strategy;
-    uint256 tokenId;
+    calldataarg args;
+    f(e, args);
+    // uint8 tokenType;
+    // address contractAddress;
+    // address strategy;
+    // uint256 tokenId;
     
-    uint256 newAssetId = registerAsset(e, tokenType, contractAddress, strategy, tokenId);
+    // uint256 newAssetId = registerAsset(e, tokenType, contractAddress, strategy, tokenId);
 
     uint8 ttA = getAssetTokenType(i);
     address addrA = getAssetAddress(i);
