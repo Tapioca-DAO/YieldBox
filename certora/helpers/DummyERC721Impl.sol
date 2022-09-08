@@ -32,7 +32,7 @@ contract DummyERC721Impl {
         return owner;
     }
 
-    function transferFrom(address from, address to, uint256 tokenId) public payable {
+    function _transferFrom(address from, address to, uint256 tokenId) internal {
         require(_owners[tokenId] == from);
         require(to != address(0));
         
@@ -43,11 +43,15 @@ contract DummyERC721Impl {
         _owners[tokenId] = to;
     }
 
+    function transferFrom(address from, address to, uint256 tokenId) external payable {
+        _transferFrom(from, to, tokenId);
+    }
+
     function safeTransferFrom(
         address from,
         address to,
         uint256 tokenId
     ) public virtual {
-        transferFrom(from, to, tokenId);
+        _transferFrom(from, to, tokenId);
     }
 }

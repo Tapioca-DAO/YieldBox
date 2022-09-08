@@ -17,20 +17,23 @@ contract YieldBoxHarness is YieldBox {
     }
 
     function getAssetTokenType(uint256 assetId) public view returns(TokenType) {
-        return assets[assetId].tokenType;
-        // return assets.length <= assetId ? TokenType.None : assets[assetId].tokenType;
+        // return assets[assetId].tokenType;
+        return assets.length <= assetId ? TokenType.None : assets[assetId].tokenType;
     }
 
     function getAssetAddress(uint256 assetId) public view returns(address) {
-        return assets[assetId].contractAddress;
+        // return assets[assetId].contractAddress;
+        return assets.length <= assetId ? address(0) : assets[assetId].contractAddress;
     }
 
     function getAssetStrategy(uint256 assetId) public view returns(IStrategy) {
-        return assets[assetId].strategy;
+        // return assets[assetId].strategy;
+        return assets.length <= assetId ? NO_STRATEGY : assets[assetId].strategy;
     }
 
     function getAssetTokenId(uint256 assetId) public view returns(uint256) {
-        return assets[assetId].tokenId;
+        // return assets[assetId].tokenId;
+        return assets.length <= assetId ? 0 : assets[assetId].tokenId;
     }
 
     function getIdFromIds(TokenType tokenType, address contractAddress, IStrategy strategy, uint256 tokenId) public view returns(uint256) {

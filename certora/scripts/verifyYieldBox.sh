@@ -8,7 +8,7 @@ certoraRun  certora/harness/YieldBoxHarness.sol \
     certora/helpers/Receiver.sol \
     --verify YieldBoxHarness:certora/spec/yieldBox.spec \
     --solc solc8.9 \
-    --staging \
+    --cloud \
     --optimistic_loop \
     --send_only --rule_sanity basic \
     --rule "$1" \
