@@ -4,6 +4,7 @@ import "otherTokens.spec"
 using YieldBoxHarness as YieldData
 using SimpleMintStrategy as Strategy
 using DummyERC20A as dummyERC20
+using DummyERC721A as dummyERC721
 ////////////////////////////////////////////////////////////////////////////
 //                      Methods                                           //
 ////////////////////////////////////////////////////////////////////////////
@@ -87,9 +88,9 @@ filtered { f -> f.selector == deploy(address,bytes,bool).selector }
 // If one of the asset parameters is different then assetId different 
 invariant differentAssetdifferentAssetId(uint i, uint j, env e)
     // assets[i] != assets[j] <=> i != j
-    !assetsIdentical(e, i, j)
+    assetsIdentical(e, i, j)
     <=>
-    i != j
+    i == j
 
     filtered { f -> f.selector != batch(bytes[],bool).selector 
                     && f.selector != uri(uint256).selector 
@@ -97,6 +98,11 @@ invariant differentAssetdifferentAssetId(uint i, uint j, env e)
                     && f.selector != symbol(uint256).selector 
                     && f.selector != decimals(uint256).selector  }
 
+    {
+        preserved{
+            require i < getAssetsLength(e) && j < getAssetsLength(e);
+    }
+    }
 
 // Ids vs assets
 invariant idsVsAssets(YieldData.Asset asset, uint i, env e)
@@ -121,7 +127,7 @@ invariant assetIdLeAssetLength(YieldData.Asset asset, uint i, env e)
                         && f.selector != decimals(uint256).selector  }
     {
         preserved{
-            require getAssetsLength(e) < max_uint - 2;
+            require getAssetsLength(e) < max_uint;
         }
     }
 
@@ -138,7 +144,7 @@ invariant erc20HasTokenIdZero(YieldData.Asset asset, env e)
                     && f.selector != decimals(uint256).selector  }
 
 // Balance of address Zero equals Zero
-invariant balanceOfAddressZero(address token)
+invariant balanceOfAddressZero()
     dummyERC20.balanceOf(0) == 0
     
     filtered { f -> f.selector != batch(bytes[],bool).selector 
@@ -147,6 +153,24 @@ invariant balanceOfAddressZero(address token)
                     && f.selector != symbol(uint256).selector 
                     && f.selector != decimals(uint256).selector  }
 
+invariant nftSharesEQzero(uint256 assetId, YieldData.Asset asset, env e)
+    (dummyERC721.ownerOf(e,asset.tokenId) == YieldData ||
+    dummyERC721.ownerOf(e,asset.tokenId) == asset.strategy)
+     <=> totalSupply(e,assetId) == 1
+    
+    filtered { f -> f.selector != batch(bytes[],bool).selector 
+                    && f.selector != uri(uint256).selector 
+                    && f.selector != name(uint256).selector 
+                    && f.selector != symbol(uint256).selector 
+                    && f.selector != decimals(uint256).selector  }
+    {
+        preserved with (env e1){
+                 require e1.msg.sender == e.msg.sender;
+                 require assetsIdentical1(e1,assetId,asset);
+                 require asset.tokenType == YieldData.TokenType.ERC721;
+                 require dummyERC721 == asset.contractAddress;
+        }
+    }
 // invariant tokenTypeValidity(YieldData.Asset asset)
 //     asset.tokenType > 4 => _tokenBalanceOf(asset) == 0
     
@@ -201,10 +225,14 @@ rule whoCanAffectRatio(method f, env e)
                     && f.selector != decimals(uint256).selector  }
 {
     uint256 assetId;
-    YieldData.Asset assets;
+    YieldData.Asset asset;
+    require assetsIdentical1(e,assetId,asset);
+
+
+    require Strategy == asset.strategy;
 
     uint strategyBalanceBefore = Strategy.currentBalance(e);
-    uint balanceBefore = _tokenBalanceOf(e,assets);
+    uint balanceBefore = _tokenBalanceOf(e,asset);
     uint supplyBefore = totalSupply(e,assetId);
     // uint ratioBefore = _tokenBalanceOf(e,assets[assetId]) / totalSupply[assetId];
 
@@ -212,7 +240,7 @@ rule whoCanAffectRatio(method f, env e)
     f(e,args);
     
     uint strategyBalanceAfter = Strategy.currentBalance(e);
-    uint balanceAfter = _tokenBalanceOf(e,assets);
+    uint balanceAfter = _tokenBalanceOf(e,asset);
     uint supplyAfter = totalSupply(e,assetId);
     // uint ratioBefore = _tokenBalanceOf(e,assets[assetId]) / totalSupply[assetId];
     
@@ -231,6 +259,8 @@ rule integrityOfNFTTransfer(method f, env e)
                     && f.selector != decimals(uint256).selector  }
 {
     uint256 assetId;
+    YieldData.Asset asset;
+    require asset.tokenType == YieldData.TokenType.ERC721;
 
     uint supplyBefore = totalSupply(e, assetId);
     calldataarg args;
@@ -245,7 +275,7 @@ rule integrityOfNFTTransfer(method f, env e)
         diff = supplyAfter - supplyBefore;
     }
    
-    assert diff > 1 => f.selector == transferMultiple(address,address[],uint256,uint256[]).selector;
+    assert diff <= 1 ;
 }
 ////////// fails due to havoc for to.call{value: amount}(\"\")
 // Any funds transferred directly onto the YieldBox will be lost
