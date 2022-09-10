@@ -73,14 +73,12 @@ methods {
 //                       Ghosts and definitions                           //
 ////////////////////////////////////////////////////////////////////////////
 
-// TODO: add ghosts as necessary
 
 
 ////////////////////////////////////////////////////////////////////////////
 //                       Invariants                                       //
 ////////////////////////////////////////////////////////////////////////////
 
-// TODO: Add invariants; document them in reports/ExampleReport.md
 
 
 ////////////////////////////////////////////////////////////////////////////
@@ -96,12 +94,10 @@ filtered { f -> f.selector == deploy(address,bytes,bool).selector }
 	assert false;
 }
 
-// this rule fails due to dynamic array. use tomer's solution
-// https://vaas-stg.certora.com/output/65782/ec2fdca18740e790f252/?anonymousKey=636a5afecb33fbb0e09e6acfaf53fa7bb202ee11
-// need to rewrite as a rule to get better calltrace
+
+// STATUS - verified 
 // If one of the asset parameters is different then assetId different 
-invariant differentAssetdifferentAssetId(uint i, uint j, env e)
-    // assets[i] != assets[j] <=> i != j
+invariant mapArrayCorrealtion(uint i, uint j, env e)
     (!assetsIdentical(i, j) <=> i != j)
         && ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i
         && ids(e, getAssetTokenType(j), getAssetAddress(j), getAssetStrategy(j), getAssetTokenId(j)) == j
@@ -111,35 +107,48 @@ invariant differentAssetdifferentAssetId(uint i, uint j, env e)
                     && f.selector != name(uint256).selector 
                     && f.selector != symbol(uint256).selector 
                     && f.selector != decimals(uint256).selector  }
+
     {
         preserved with (env e2) {
-            require i < getAssetsLength();
-            require j < getAssetsLength();
+            require getAssetsLength() < 1000000;
             require i > 0 && j > 0;
         }
-        preserved registerAsset(uint8 tt,address addr,address str,uint256 id) with (env e3) {
-            require ids(e, tt, addr, str, id) == 0 || (ids(e, tt, addr, str, id) == i || ids(e, tt, addr, str, id) == j);
-            require i < getAssetsLength();
-            require j < getAssetsLength();
-            require i > 0 && j > 0;
-        }
+    } 
+
+    {
+        preserved{
+            require i < getAssetsLength(e) && j < getAssetsLength(e);
+    }
     }
 
-
+// STATUS - in progress 
 // Ids vs assets
 // if asset isn't in the map of ids, it's not in array of assets
 invariant idsVsAssets1(YieldData.Asset asset, uint i, env e)
-    ids(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0 =>      // reuire i > 0;
-        // assets[i] != asset &&
-        !assetsIdentical1(i, asset)
+    // https://vaas-stg.certora.com/output/3106/d2e92dbf60ed218c8d0f/?anonymousKey=9f927c8176cd0e452c909aa900f4d0d964fbf89d
+    i != 0 => (
+        ids(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0 =>
+        !assetsIdentical1(i, asset))
+
+    // instate violation ()preserved isn't applied there: https://vaas-stg.certora.com/output/3106/e7991c8a52c94c99b0d4/?anonymousKey=5b0e9f077fc389516d2a2e6abed60e9b8c503e15
+    // ids(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0 =>
+    //     !assetsIdentical1(i, asset)
 
     filtered { f -> f.selector != batch(bytes[],bool).selector  
                         && f.selector != uri(uint256).selector 
                         && f.selector != name(uint256).selector 
                         && f.selector != symbol(uint256).selector 
                         && f.selector != decimals(uint256).selector  }
+    
+    {
+        preserved with (env e2) {
+            require getAssetsLength() < 1000000;
+        }
+    }  
 
 
+// STATUS - in progress 
+// fails in instate: https://vaas-stg.certora.com/output/3106/b310844c931df786358c/?anonymousKey=d295f27fb55d837678a4cc823b689e25bffbd90c
 invariant idsVsAssets2(YieldData.Asset asset, uint i, env e)
         ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i
 
@@ -149,46 +158,18 @@ invariant idsVsAssets2(YieldData.Asset asset, uint i, env e)
                         && f.selector != symbol(uint256).selector 
                         && f.selector != decimals(uint256).selector  }
 
-// STATUS - in progress / verified / error / timeout / etc.
-// TODO: rule description
-rule inv_idsVsAssets2(env e, env e2, method f)
-filtered { f -> f.selector != batch(bytes[],bool).selector  
-                        && f.selector != uri(uint256).selector 
-                        && f.selector != name(uint256).selector 
-                        && f.selector != symbol(uint256).selector 
-                        && f.selector != decimals(uint256).selector  } 
-{
-    uint i;
-
-    uint8 ttB = getAssetTokenType(i);
-    address addrB = getAssetAddress(i);
-    address strB = getAssetStrategy(i);
-    uint256 idB = getAssetTokenId(i);
-
-    require ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i;
-    require getAssetsLength() < max_uint - 2;
-
-    calldataarg args;
-    f(e, args);
-    // uint8 tokenType;
-    // address contractAddress;
-    // address strategy;
-    // uint256 tokenId;
-    
-    // uint256 newAssetId = registerAsset(e, tokenType, contractAddress, strategy, tokenId);
-
-    uint8 ttA = getAssetTokenType(i);
-    address addrA = getAssetAddress(i);
-    address strA = getAssetStrategy(i);
-    uint256 idA = getAssetTokenId(i);
-
-    assert ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i, "Remember, with great power comes great responsibility.";
-}
+    {
+        preserved with (env e2) {
+            require getAssetsLength() < 1000000;
+            require i > 0;
+        }
+    }   
 
 
-// verified
+
+// STATUS - verified
 // * explain preserved block
-invariant assetIdLeAssetLength(YieldData.Asset asset, uint i, env e)
+invariant assetIdtoAssetLength(YieldData.Asset asset, uint i, env e)
     ids(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) <= getAssetsLength()
     
     filtered { f -> f.selector != batch(bytes[],bool).selector  
@@ -198,12 +179,12 @@ invariant assetIdLeAssetLength(YieldData.Asset asset, uint i, env e)
                         && f.selector != decimals(uint256).selector  }
     {
         preserved{
-            require getAssetsLength() < max_uint - 2;
+            require getAssetsLength() < max_uint;
         }
     }
 
 
-// verified
+// STATUS - verified
 // An asset of type ERC20 got a tokenId == 0
 invariant erc20HasTokenIdZero(YieldData.Asset asset, env e)
     asset.tokenType == YieldData.TokenType.ERC20 && asset.tokenId != 0 =>
@@ -217,7 +198,7 @@ invariant erc20HasTokenIdZero(YieldData.Asset asset, env e)
                     && f.selector != decimals(uint256).selector  }
 
 
-// verfied
+// STATUS - verified 
 // Balance of address Zero equals Zero
 invariant balanceOfAddressZero(address token)
     dummyERC20.balanceOf(0) == 0 
@@ -228,15 +209,18 @@ invariant balanceOfAddressZero(address token)
                     && f.selector != decimals(uint256).selector  }
 
 
+// STATUS - verified
 // Balance of address Zero equals Zero
-invariant balanceOfAddressZero1(address token, env e)
-    balanceOf(e, 0) == 0
+invariant balanceOfAddressZero1(address token, uint256 tokenId, env e)
+    balanceOf(e, 0, tokenId) == 0
     filtered { f -> f.selector != batch(bytes[],bool).selector 
                     && f.selector != uri(uint256).selector 
                     && f.selector != name(uint256).selector 
                     && f.selector != symbol(uint256).selector 
                     && f.selector != decimals(uint256).selector  }
-    
+
+
+
 invariant nftSharesEQzero(uint256 assetId, YieldData.Asset asset, env e)
     (dummyERC721.ownerOf(e,asset.tokenId) == YieldData ||
     dummyERC721.ownerOf(e,asset.tokenId) == asset.strategy)
@@ -255,9 +239,18 @@ invariant nftSharesEQzero(uint256 assetId, YieldData.Asset asset, env e)
                  require dummyERC721 == asset.contractAddress;
         }
     }
-// invariant tokenTypeValidity(YieldData.Asset asset)
-//     asset.tokenType > 4 => _tokenBalanceOf(asset) == 0
+
+
+
+// invariant tokenTypeValidity(YieldData.Asset asset, env e, uint256 assetId)
+//     getAssetTokenType(assetId) == 4 => _tokenBalanceOf(e, asset) == 0
+//     {
+//         preserved {
+//             require assetId == asset.tokenId;
+//         }
+//     }
     
+
 
 // in progress
 // Integrity of withdraw()
@@ -282,7 +275,7 @@ rule withdrawIntegrity()
 }
 
 
-// in progress
+// STATUS - verified * with no reminder flag
 // need to add noDivision remainder flag
 // The more deposited the more shares received
 rule moreDepositMoreShares()
@@ -343,6 +336,8 @@ rule whoCanAffectRatio(method f, env e)
 
 // in progress
 // if a balanceOf an NFT tokenType asset has changed by more than 1 it must have been transferMultiple() called
+// https://vaas-stg.certora.com/output/3106/0efc67f2d671b0484e2e/?anonymousKey=a98a6178f7c799009988e51b99027f57785d9791
+// limited tokenType: https://vaas-stg.certora.com/output/3106/5ed014b8513e52d78a92/?anonymousKey=e26db181af1e6424b9e395f90c21a9d70a70cf2a
 rule integrityOfNFTTransfer(method f, env e)
     filtered { f -> f.selector != batch(bytes[],bool).selector 
                     && f.selector != uri(uint256).selector 
@@ -355,18 +350,21 @@ rule integrityOfNFTTransfer(method f, env e)
     require asset.tokenType == YieldData.TokenType.ERC721;
 
     uint supplyBefore = totalSupply(e, assetId);
+    require getAssetTokenType(assetId) == 3;
+
     calldataarg args;
     f(e,args);
-    uint supplyAfter = totalSupply(e,assetId);
+
+    uint supplyAfter = totalSupply(e, assetId);
 
     uint diff;
-   if (supplyBefore > supplyAfter) {
+    if (supplyBefore > supplyAfter) {
         diff = supplyBefore - supplyAfter;
     }
     else {
         diff = supplyAfter - supplyBefore;
     }
-   
+
     assert diff <= 1 ;
 }
 
