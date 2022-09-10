@@ -125,11 +125,6 @@ invariant differentAssetdifferentAssetId(uint i, uint j, env e)
         }
     }
 
-    {
-        preserved{
-            require i < getAssetsLength(e) && j < getAssetsLength(e);
-    }
-    }
 
 // Ids vs assets
 // if asset isn't in the map of ids, it's not in array of assets
@@ -241,18 +236,7 @@ invariant balanceOfAddressZero1(address token, env e)
                     && f.selector != name(uint256).selector 
                     && f.selector != symbol(uint256).selector 
                     && f.selector != decimals(uint256).selector  }
-<<<<<<< HEAD
-    {
-        preserved with (env e1){
-                 require e1.msg.sender == e.msg.sender;
-                 require assetsIdentical1(e1,assetId,asset);
-                 require asset.tokenType == YieldData.TokenType.ERC721;
-                 require dummyERC721 == asset.contractAddress;
-        }
-    }
-=======
-
-
+    
 invariant nftSharesEQzero(uint256 assetId, YieldData.Asset asset, env e)
     (dummyERC721.ownerOf(e,asset.tokenId) == YieldData ||
     dummyERC721.ownerOf(e,asset.tokenId) == asset.strategy)
@@ -266,7 +250,7 @@ invariant nftSharesEQzero(uint256 assetId, YieldData.Asset asset, env e)
     {
         preserved with (env e1){
                  require e1.msg.sender == e.msg.sender;
-                 require assetsIdentical1(e1,assetId,asset);
+                 require assetsIdentical1(assetId,asset);
                  require asset.tokenType == YieldData.TokenType.ERC721;
                  require dummyERC721 == asset.contractAddress;
         }
@@ -333,7 +317,7 @@ rule whoCanAffectRatio(method f, env e)
 {
     uint256 assetId;
     YieldData.Asset asset;
-    require assetsIdentical1(e,assetId,asset);
+    require assetsIdentical1(assetId,asset);
 
 
     require Strategy == asset.strategy;
