@@ -40,6 +40,10 @@ contract YieldBoxHarness is YieldBox {
         return ids[tokenType][contractAddress][strategy][tokenId];
     }
 
+    function getAssetId(Asset memory asset) public view returns(uint256){
+        return ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId];
+    }
+
     function assetsIdentical(uint256 i, uint256 j) public view returns(bool) {
         bool isIdentical = assets[i].tokenType == assets[j].tokenType &&
                assets[i].contractAddress == assets[j].contractAddress &&

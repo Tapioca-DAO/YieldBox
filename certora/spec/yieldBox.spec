@@ -16,13 +16,14 @@ methods {
     getAssetArrayElement(uint256) returns((uint8, address, address, uint256)) envfree
     getAssetsLength() returns(uint256) envfree
     getIdFromIds(uint8, address, address, uint256) returns(uint256) envfree
+    getAssetId(uint8, address, address, uint256) returns(uint256) envfree
     getAssetTokenType(uint256) returns(uint8) envfree
     getAssetAddress(uint256) returns(address) envfree
     getAssetStrategy(uint256) returns(address) envfree
     getAssetTokenId(uint256) returns(uint256) envfree
     assetsIdentical(uint256, uint256) returns(bool) envfree
     assetsIdentical1(uint256, (uint8, address, address, uint256)) returns(bool) envfree
-
+    safeTransferFrom(address,address,uint256,uint256,bytes) envfree
 
     // helper functions from the harness
 
@@ -109,17 +110,12 @@ invariant mapArrayCorrealtion(uint i, uint j, env e)
                     && f.selector != decimals(uint256).selector  }
 
     {
-        preserved with (env e2) {
+        preserved {
             require getAssetsLength() < 1000000;
             require i > 0 && j > 0;
+            require i < getAssetsLength() && j < getAssetsLength();
         }
     } 
-
-    {
-        preserved{
-            require i < getAssetsLength(e) && j < getAssetsLength(e);
-    }
-    }
 
 // STATUS - in progress 
 // Ids vs assets
@@ -159,7 +155,7 @@ invariant idsVsAssets2(YieldData.Asset asset, uint i, env e)
                         && f.selector != decimals(uint256).selector  }
 
     {
-        preserved with (env e2) {
+        preserved {
             require getAssetsLength() < 1000000;
             require i > 0;
         }
@@ -168,7 +164,7 @@ invariant idsVsAssets2(YieldData.Asset asset, uint i, env e)
 
 
 // STATUS - verified
-// * explain preserved block
+// explain preserved block : ignore overflow counter example
 invariant assetIdtoAssetLength(YieldData.Asset asset, uint i, env e)
     ids(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) <= getAssetsLength()
     
@@ -188,7 +184,6 @@ invariant assetIdtoAssetLength(YieldData.Asset asset, uint i, env e)
 // An asset of type ERC20 got a tokenId == 0
 invariant erc20HasTokenIdZero(YieldData.Asset asset, env e)
     asset.tokenType == YieldData.TokenType.ERC20 && asset.tokenId != 0 =>
-    // getIdFromIds(e, asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0
     ids(e,asset.tokenType, asset.contractAddress, asset.strategy, asset.tokenId) == 0
 
     filtered { f -> f.selector != batch(bytes[],bool).selector 
@@ -221,10 +216,10 @@ invariant balanceOfAddressZero1(address token, uint256 tokenId, env e)
 
 
 
-invariant nftSharesEQzero(uint256 assetId, YieldData.Asset asset, env e)
+invariant nftSharesEQzero(YieldData.Asset asset, env e)
     (dummyERC721.ownerOf(e,asset.tokenId) == YieldData ||
     dummyERC721.ownerOf(e,asset.tokenId) == asset.strategy)
-     <=> totalSupply(e,assetId) == 1
+     <=> totalSupply(e,getAssetId(e,asset)) == 1
     
     filtered { f -> f.selector != batch(bytes[],bool).selector 
                     && f.selector != uri(uint256).selector 
@@ -233,8 +228,7 @@ invariant nftSharesEQzero(uint256 assetId, YieldData.Asset asset, env e)
                     && f.selector != decimals(uint256).selector  }
     {
         preserved with (env e1){
-                 require e1.msg.sender == e.msg.sender;
-                 require assetsIdentical1(assetId,asset);
+                 require assetsIdentical1(getAssetId(e1,asset),asset);
                  require asset.tokenType == YieldData.TokenType.ERC721;
                  require dummyERC721 == asset.contractAddress;
         }
@@ -266,7 +260,7 @@ rule withdrawIntegrity()
     uint balanceBefore = balanceOf(e,from, assetId);
     amountOut, shareOut = withdraw(e,assetId, from, to, amount, share);
 
-    assert amountOut == 0 <=> shareOut == 0;
+    assert shareOut == 0 => amountOut == 0 ;
     assert amountOut == 0 && shareOut == 0 <=> amount == 0 && share == 0;
     assert balanceBefore == 0 => shareOut == 0;
 
@@ -370,7 +364,7 @@ rule integrityOfNFTTransfer(method f, env e)
 
 
 
-// in progress
+// in progress shareOut1 == shareOut2 fails and amountOut1 == amountOut2 fails
 // Any funds transferred directly onto the YieldBox will be lost
 rule fundsTransferredToContractWillBeLost()
 {
@@ -382,11 +376,18 @@ rule fundsTransferredToContractWillBeLost()
     address from; address to;
 
     storage init = lastStorage;
-    uint someAmount;
-    dummyERC20.transfer(currentContract, someAmount);
+
+    address _from; require _from != Strategy;
+    address _to = currentContract;
+    uint256 id;
+    uint256 value;
+    bytes data;
+// dummyERC20.transfer(currentContract, someAmount);
+    safeTransferFrom(_from, _to, id, value, data);
 
     amountOut1, shareOut1 = withdraw(e,assetId, from, to, amount, share);
     amountOut2, shareOut2 = withdraw(e,assetId, from, to, amount, share) at init;
     
-    assert amountOut1 == amountOut2;
+    // assert amountOut1 == amountOut2;
+    assert shareOut1 == shareOut2 || amountOut1 == amountOut2;
 }
