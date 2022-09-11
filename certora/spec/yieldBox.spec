@@ -16,7 +16,7 @@ methods {
     getAssetArrayElement(uint256) returns((uint8, address, address, uint256)) envfree
     getAssetsLength() returns(uint256) envfree
     getIdFromIds(uint8, address, address, uint256) returns(uint256) envfree
-    getAssetId(uint8, address, address, uint256) returns(uint256) envfree
+    getAssetId(YieldData.Asset) returns(uint256) envfree
     getAssetTokenType(uint256) returns(uint8) envfree
     getAssetAddress(uint256) returns(address) envfree
     getAssetStrategy(uint256) returns(address) envfree
@@ -217,9 +217,9 @@ invariant balanceOfAddressZero1(address token, uint256 tokenId, env e)
 
 
 invariant nftSharesEQzero(YieldData.Asset asset, env e)
-    (dummyERC721.ownerOf(e,asset.tokenId) == YieldData ||
-    dummyERC721.ownerOf(e,asset.tokenId) == asset.strategy)
-     <=> totalSupply(e,getAssetId(e,asset)) == 1
+    ((dummyERC721.ownerOf(e,asset.tokenId) == YieldData && asset.strategy == 0) ||
+        dummyERC721.ownerOf(e,asset.tokenId) == asset.strategy)
+    <=> totalSupply(e,getAssetId(asset)) == 1
     
     filtered { f -> f.selector != batch(bytes[],bool).selector 
                     && f.selector != uri(uint256).selector 
@@ -228,21 +228,53 @@ invariant nftSharesEQzero(YieldData.Asset asset, env e)
                     && f.selector != decimals(uint256).selector  }
     {
         preserved with (env e1){
-                 require assetsIdentical1(getAssetId(e1,asset),asset);
-                 require asset.tokenType == YieldData.TokenType.ERC721;
-                 require dummyERC721 == asset.contractAddress;
+            require assetsIdentical1(getAssetId(asset),asset);
+            require asset.tokenType == YieldData.TokenType.ERC721;
+            require dummyERC721 == asset.contractAddress;
+        }
+        preserved depositNFTAsset(uint256 assetId, address from, address to) with (env e2) {
+            require assetId == getAssetId(asset);
+            require assetsIdentical1(getAssetId(asset), asset);
+            require asset.tokenType == YieldData.TokenType.ERC721;
+            require dummyERC721 == asset.contractAddress;
+            require totalSupply(e2, getAssetId(asset)) <= 1;
+        }
+    }
+
+
+invariant nftSharesEQzeroTest(YieldData.Asset asset, env e)
+    totalSupply(e,getAssetId(asset)) == 1 
+        => (dummyERC721.ownerOf(e,asset.tokenId) == YieldData ||
+            dummyERC721.ownerOf(e,asset.tokenId) == asset.strategy)
+    
+    filtered { f -> f.selector != batch(bytes[],bool).selector 
+                    && f.selector != uri(uint256).selector 
+                    && f.selector != name(uint256).selector 
+                    && f.selector != symbol(uint256).selector 
+                    && f.selector != decimals(uint256).selector  }
+    {
+        preserved with (env e1){
+            require assetsIdentical1(getAssetId(asset),asset);
+            require asset.tokenType == YieldData.TokenType.ERC721;
+            require dummyERC721 == asset.contractAddress;
+        }
+        preserved depositNFTAsset(uint256 assetId, address from, address to) with (env e2) {
+            require assetId == getAssetId(asset);
+            require assetsIdentical1(getAssetId(asset), asset);
+            require asset.tokenType == YieldData.TokenType.ERC721;
+            require dummyERC721 == asset.contractAddress;
         }
     }
 
 
 
-// invariant tokenTypeValidity(YieldData.Asset asset, env e, uint256 assetId)
-//     getAssetTokenType(assetId) == 4 => _tokenBalanceOf(e, asset) == 0
-//     {
-//         preserved {
-//             require assetId == asset.tokenId;
-//         }
-//     }
+invariant tokenTypeValidity(YieldData.Asset asset, env e, uint256 assetId)
+    getAssetTokenType(assetId) == 4 => _tokenBalanceOf(e, asset) == 0
+    {
+        preserved {
+            require assetId == getAssetId(asset);
+        }
+    }
     
 
 
@@ -258,19 +290,21 @@ rule withdrawIntegrity()
 
     uint strategyBalanceBefore = Strategy.currentBalance(e);
     uint balanceBefore = balanceOf(e,from, assetId);
+
+    // correlate assset strategy with used strategy: require asset.strategy == Strategy;
+
     amountOut, shareOut = withdraw(e,assetId, from, to, amount, share);
 
-    assert shareOut == 0 => amountOut == 0 ;
+    assert shareOut == 0 => amountOut == 0;
     assert amountOut == 0 && shareOut == 0 <=> amount == 0 && share == 0;
     assert balanceBefore == 0 => shareOut == 0;
 
     // totalAmount of a strategy == 0 implies withdraw == 0
-    assert strategyBalanceBefore == 0 => amountOut == 0 && shareOut == 0;
+    assert strategyBalanceBefore == 0 && asset.strategy != 0 => amountOut == 0 && shareOut == 0;
 }
 
 
 // STATUS - verified * with no reminder flag
-// need to add noDivision remainder flag
 // The more deposited the more shares received
 rule moreDepositMoreShares()
 {
@@ -330,8 +364,6 @@ rule whoCanAffectRatio(method f, env e)
 
 // in progress
 // if a balanceOf an NFT tokenType asset has changed by more than 1 it must have been transferMultiple() called
-// https://vaas-stg.certora.com/output/3106/0efc67f2d671b0484e2e/?anonymousKey=a98a6178f7c799009988e51b99027f57785d9791
-// limited tokenType: https://vaas-stg.certora.com/output/3106/5ed014b8513e52d78a92/?anonymousKey=e26db181af1e6424b9e395f90c21a9d70a70cf2a
 rule integrityOfNFTTransfer(method f, env e)
     filtered { f -> f.selector != batch(bytes[],bool).selector 
                     && f.selector != uri(uint256).selector 
@@ -359,7 +391,7 @@ rule integrityOfNFTTransfer(method f, env e)
         diff = supplyAfter - supplyBefore;
     }
 
-    assert diff <= 1 ;
+    assert diff <= 1;
 }
 
 
@@ -382,12 +414,14 @@ rule fundsTransferredToContractWillBeLost()
     uint256 id;
     uint256 value;
     bytes data;
-// dummyERC20.transfer(currentContract, someAmount);
+    // dummyERC20.transfer(currentContract, someAmount);
     safeTransferFrom(_from, _to, id, value, data);
 
     amountOut1, shareOut1 = withdraw(e,assetId, from, to, amount, share);
     amountOut2, shareOut2 = withdraw(e,assetId, from, to, amount, share) at init;
     
     // assert amountOut1 == amountOut2;
+    // assert shareOut1 == shareOut2;
     assert shareOut1 == shareOut2 || amountOut1 == amountOut2;
+    assert false;
 }

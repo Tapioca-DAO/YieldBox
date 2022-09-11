@@ -12,7 +12,7 @@ certoraRun  certora/harness/YieldBoxHarness.sol \
     --optimistic_loop \
     --send_only --rule_sanity basic \
     --rule "$1" \
-    --msg "YieldBox - $1 with no reminder flag"
+    --msg "YieldBox - $1"
 
 
     # --settings -divideNoRemainder=true \
