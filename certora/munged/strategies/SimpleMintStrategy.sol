@@ -40,9 +40,9 @@ contract SimpleMintStrategy is BaseStrategy{
     // This could simulate accumilated yields etc. 
     // Note that this strategy should be used for a SINGLE token. It has no idea about other tokens than what it was constructed for.
 
-    TokenType public immutable tokenType;
-    uint256 public immutable tokenId;
-    address public immutable tokenAddress;
+    TokenType public tokenType;
+    uint256 public tokenId;
+    address public tokenAddress;
     uint256 public mintAmount; //Should this be immutable too?? #TODO
     // uint256 public _balance;
 

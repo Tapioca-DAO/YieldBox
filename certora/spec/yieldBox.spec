@@ -87,7 +87,6 @@ methods {
 ////////////////////////////////////////////////////////////////////////////
 
 rule sanity(method f)
-filtered { f -> f.selector == deploy(address,bytes,bool).selector }
 {
 	env e;
 	calldataarg args;
@@ -113,9 +112,8 @@ invariant mapArrayCorrealtion(uint i, uint j, env e)
         preserved {
             require getAssetsLength() < 1000000;
             require i > 0 && j > 0;
-            require i < getAssetsLength() && j < getAssetsLength();
         }
-    } 
+    }
 
 // STATUS - in progress 
 // Ids vs assets
@@ -145,7 +143,7 @@ invariant idsVsAssets1(YieldData.Asset asset, uint i, env e)
 
 // STATUS - in progress 
 // fails in instate: https://vaas-stg.certora.com/output/3106/b310844c931df786358c/?anonymousKey=d295f27fb55d837678a4cc823b689e25bffbd90c
-invariant idsVsAssets2(YieldData.Asset asset, uint i, env e)
+invariant idsVsAssets2(YieldData.Asset asset, uint i, uint j, env e)
         ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i
 
     filtered { f -> f.selector != batch(bytes[],bool).selector  
@@ -157,7 +155,7 @@ invariant idsVsAssets2(YieldData.Asset asset, uint i, env e)
     {
         preserved {
             require getAssetsLength() < 1000000;
-            require i > 0;
+            // require i > 0;
         }
     }   
 
@@ -357,7 +355,6 @@ rule whoCanAffectRatio(method f, env e)
     YieldData.Asset asset;
     require assetsIdentical1(assetId,asset);
 
-
     require Strategy == asset.strategy;
 
     uint strategyBalanceBefore = Strategy.currentBalance(e);
@@ -380,6 +377,7 @@ rule whoCanAffectRatio(method f, env e)
 
 
 // in progress
+// strange mint - https://vaas-stg.certora.com/output/3106/87a26cd396f71b2eaf2f/?anonymousKey=195f4f4d43f33fc51e1a1b373968daa7d90cd91c
 // if a balanceOf an NFT tokenType asset has changed by more than 1 it must have been transferMultiple() called
 rule integrityOfNFTTransfer(method f, env e)
     filtered { f -> f.selector != batch(bytes[],bool).selector 
@@ -390,10 +388,12 @@ rule integrityOfNFTTransfer(method f, env e)
 {
     uint256 assetId;
     YieldData.Asset asset;
+    require assetsIdentical1(assetId, asset);
     require asset.tokenType == YieldData.TokenType.ERC721;
+    require Strategy.tokenType(e) == asset.tokenType;
 
     uint supplyBefore = totalSupply(e, assetId);
-    require getAssetTokenType(assetId) == 3;
+    // require supplyBefore <= 1;      // is it possible to have more than 1? added this because of it: https://vaas-stg.certora.com/output/3106/3fe68ab9c35bf2d1820e/?anonymousKey=122cdc3545bb5541ef9c1a7a7ea56b0eb75a11d2
 
     calldataarg args;
     f(e,args);
@@ -440,5 +440,4 @@ rule fundsTransferredToContractWillBeLost()
     // assert amountOut1 == amountOut2;
     // assert shareOut1 == shareOut2;
     assert shareOut1 == shareOut2 || amountOut1 == amountOut2;
-    assert false;
 }
