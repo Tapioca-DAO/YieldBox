@@ -268,15 +268,12 @@ invariant nftSharesEQzeroTest(YieldData.Asset asset, env e)
 
 
 
-invariant tokenTypeValidity(YieldData.Asset asset, env e, uint256 assetId)
-    getAssetTokenType(assetId) == 4 => _tokenBalanceOf(e, asset) == 0
-    {
-        preserved {
-            require assetId == getAssetId(asset);
-        }
-    }
-    
+invariant tokenTypeValidity(YieldData.Asset asset, env e)
+    getAssetTokenType(getAssetId(asset)) == 4 => _tokenBalanceOf(e, asset) == 0
 
+// check for correctness
+invariant balanceVStotalSupply(YieldData.Asset asset, env e)
+     _tokenBalanceOf(e,asset) == 0 => totalSupply(e,getAssetId(asset)) == 0
 
 // in progress
 // Integrity of withdraw()
@@ -285,10 +282,15 @@ rule withdrawIntegrity()
     env e;
 
     uint amountOut; uint shareOut;
-    uint assetId; uint amount; uint share;
+    uint amount; uint share;
     address from; address to;
 
-    uint strategyBalanceBefore = Strategy.currentBalance(e);
+    YieldData.Asset asset;
+    uint assetId = getAssetId(asset);
+
+    require asset.strategy == Strategy;
+
+    uint strategyBalanceBefore = _tokenBalanceOf(e,asset);//Strategy.currentBalance(e);
     uint balanceBefore = balanceOf(e,from, assetId);
 
     // correlate assset strategy with used strategy: require asset.strategy == Strategy;
@@ -300,7 +302,7 @@ rule withdrawIntegrity()
     assert balanceBefore == 0 => shareOut == 0;
 
     // totalAmount of a strategy == 0 implies withdraw == 0
-    assert strategyBalanceBefore == 0 && asset.strategy != 0 => amountOut == 0 && shareOut == 0;
+    assert strategyBalanceBefore == 0 && asset.strategy != 0 => amountOut == 0 || shareOut == 0;
 }
 
 
@@ -326,7 +328,22 @@ rule moreDepositMoreShares()
     assert  amount2 > amount1 => shareOut2 > shareOut1;
 }
 
+//Fails as expected , it possible to deposit something and get back zero shares
+rule sharesAfterDeposit()
+{
+    env e;
+    uint amountOut; uint shareOut; uint amount;
+    uint tokenId;
+    uint share = 0; // forcing it to use amount
+    YieldData.TokenType tokenType;
+    address contractAddress;
+    address from; address to;
+    address strategy;
 
+    amountOut, shareOut = deposit(e, tokenType, contractAddress, strategy, tokenId, from, to, amount, share);
+
+    assert amount > 0 => shareOut > 0;
+}
 // in progress
 // Only change in strategy profit could affect the ratio (shares to amount)
 rule whoCanAffectRatio(method f, env e)
