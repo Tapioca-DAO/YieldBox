@@ -20,7 +20,7 @@ contract HelloWorld {
     // Don't deposit twice, you'll lose the first deposit ;)
     function deposit(uint256 amount) public {
         uint256 shares;
-        (, shares) = yieldBox.depositAsset(assetId, msg.sender, address(this), amount, 0);
+        (, shares) = yieldBox.depositAsset(assetId, msg.sender, address(this), amount, 0, 0);
         yieldBoxShares[msg.sender] += shares;
     }
 
