@@ -1,10 +1,3 @@
-if (process.env.DOTENV_PATH) {
-    console.log("Using custom .env path:", process.env.DOTENV_PATH)
-    require("dotenv").config({ path: process.env.DOTENV_PATH })
-} else {
-    require("dotenv").config()
-}
-
 import { HardhatUserConfig, task } from "hardhat/config"
 import "@nomiclabs/hardhat-ethers"
 import "@nomiclabs/hardhat-etherscan"
@@ -16,6 +9,14 @@ import "solidity-coverage"
 import "@boringcrypto/hardhat-framework"
 import { ethers, BigNumber } from "ethers"
 import requestSync from "sync-request"
+import "hardhat-tracer"
+
+if (process.env.DOTENV_PATH) {
+    console.log("Using custom .env path:", process.env.DOTENV_PATH)
+    require("dotenv").config({ path: process.env.DOTENV_PATH })
+} else {
+    require("dotenv").config()
+}
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
