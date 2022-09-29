@@ -180,8 +180,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
 
     function depositETHAsset(
         uint256 assetId,
-        address to,
-        uint256 amount
+        address to
     )
         public
         payable
@@ -192,26 +191,27 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
         )
     {
         // Checks
+        require(msg.value > 0, "YieldBox: no ETH sent");
         Asset storage asset = assets[assetId];
         require(asset.tokenType == TokenType.ERC20 && asset.contractAddress == address(wrappedNative), "YieldBox: not wrappedNative");
 
         // Effects
-        uint256 share = amount._toShares(totalSupply[assetId], _tokenBalanceOf(asset), false);
+        uint256 share = msg.value._toShares(totalSupply[assetId], _tokenBalanceOf(asset), false);
 
         _mint(to, assetId, share);
 
         // Interactions
-        wrappedNative.deposit{ value: amount }();
+        wrappedNative.deposit{ value: msg.value }();
         if (asset.strategy != NO_STRATEGY) {
             // Strategies always receive wrappedNative (supporting both wrapped and raw native tokens adds too much complexity)
-            wrappedNative.safeTransfer(address(asset.strategy), amount);
+            wrappedNative.safeTransfer(address(asset.strategy), msg.value);
         }
 
         if (asset.strategy != NO_STRATEGY) {
-            asset.strategy.deposited(amount);
+            asset.strategy.deposited(msg.value);
         }
 
-        return (amount, share);
+        return (msg.value, share);
     }
 
     /// @notice Withdraws an amount of `token` from a user account.
@@ -461,9 +461,8 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
 
     function depositETH(
         IStrategy strategy,
-        address to,
-        uint256 amount
+        address to
     ) public payable returns (uint256 amountOut, uint256 shareOut) {
-        return depositETHAsset(registerAsset(TokenType.ERC20, address(wrappedNative), strategy, 0), to, amount);
+        return depositETHAsset(registerAsset(TokenType.ERC20, address(wrappedNative), strategy, 0), to);
     }
 }

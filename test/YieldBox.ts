@@ -119,7 +119,7 @@ describe("YieldBox", function () {
             expect(await yieldBox.toAmount(3, 123_00000000, false)).equals(123)
             expect(await yieldBox.amountOf(Deployer, 3)).equals(1000)
 
-            await yieldBox.depositETH(Zero, Deployer, 1000, { value: 1000 })
+            await yieldBox.depositETH(Zero, Deployer, { value: 1000 })
             expect(await yieldBox.toShare(4, 123, false)).equals(123_00000000)
             expect(await yieldBox.toAmount(4, 123_00000000, false)).equals(123)
             expect(await yieldBox.amountOf(Deployer, 4)).equals(1000)
@@ -134,7 +134,7 @@ describe("YieldBox", function () {
             expect(await yieldBox.toAmount(6, 123_00000000, false)).equals(123)
             expect(await yieldBox.amountOf(Deployer, 6)).equals(1000)
 
-            await yieldBox.depositETH(ethStrategy.address, Deployer, 1000, { value: 1000 })
+            await yieldBox.depositETH(ethStrategy.address, Deployer, { value: 1000 })
             expect(await yieldBox.toShare(7, 123, false)).equals(123_00000000)
             expect(await yieldBox.toAmount(7, 123_00000000, false)).equals(123)
             expect(await yieldBox.amountOf(Deployer, 7)).equals(1000)
@@ -299,7 +299,7 @@ describe("YieldBox", function () {
     describe("depositETH", () => {
         it("handles deposit of ETH", async function () {
             // deposit by amount only
-            await yieldBox.depositETH(Zero, Alice, 1000, {
+            await yieldBox.depositETH(Zero, Alice, {
                 value: 1000,
             })
 
@@ -307,32 +307,22 @@ describe("YieldBox", function () {
             expect(await weth.balanceOf(yieldBox.address)).equals(1000)
         })
 
-        it("reverts on deposit with too little ETH", async function () {
-            // deposit by amount only
-            await expect(yieldBox.depositETH(Zero, Alice, 1000, { value: 999 })).to.be.revertedWith("function call failed to execute")
-        })
-
         it("reverts on deposit of not ETH", async function () {
             // deposit by amount only
-            await expect(yieldBox.depositETHAsset(1, Alice, 1000, { value: 1000 })).to.be.revertedWith("YieldBox: not wrappedNative")
+            await expect(yieldBox.depositETHAsset(1, Alice, { value: 1000 })).to.be.revertedWith("YieldBox: not wrappedNative")
         })
     })
 
     describe("depositETH with strategy", () => {
         it("handles deposit of ETH", async function () {
             // deposit by amount only
-            await yieldBox.depositETH(ethStrategy.address, Alice, 1000, {
+            await yieldBox.depositETH(ethStrategy.address, Alice, {
                 value: 1000,
             })
 
             expect(await yieldBox.balanceOf(Alice, 2)).equals(1000_00000000)
             expect(await weth.balanceOf(yieldBox.address)).equals(0)
             expect(await weth.balanceOf(ethStrategy.address)).equals(1000)
-        })
-
-        it("reverts on deposit with too little ETH", async function () {
-            // deposit by amount only
-            await expect(yieldBox.depositETH(Zero, Alice, 1000, { value: 999 })).to.be.revertedWith("function call failed to execute")
         })
     })
 
@@ -456,7 +446,7 @@ describe("YieldBox", function () {
         })
 
         it("can withdraw ETH", async function () {
-            await yieldBox.depositETH(Zero, Deployer, 1000, { value: 1000 })
+            await yieldBox.depositETH(Zero, Deployer, { value: 1000 })
             await yieldBox.withdraw(2, Deployer, Deployer, 1000, 0)
         })
 
@@ -480,7 +470,7 @@ describe("YieldBox", function () {
         })
 
         it("can withdraw ETH with strategy", async function () {
-            await yieldBox.depositETH(ethStrategy.address, Deployer, 1000, { value: 1000 })
+            await yieldBox.depositETH(ethStrategy.address, Deployer, { value: 1000 })
             await yieldBox.withdraw(2, Deployer, Deployer, 1000, 0)
         })
 
@@ -501,7 +491,7 @@ describe("YieldBox", function () {
             await yieldBox.withdraw(3, Deployer, Deployer, 1000, 0)
             await yieldBox.withdraw(3, Deployer, Deployer, 0, 1000_00000000)
 
-            await yieldBox.depositETH(Zero, Deployer, 1000, { value: 1000 })
+            await yieldBox.depositETH(Zero, Deployer, { value: 1000 })
             await yieldBox.withdraw(4, Deployer, Deployer, 1000, 0)
 
             await yieldBox.deposit(TokenType.ERC20, token.address, tokenStrategy.address, 0, Deployer, Deployer, 1000, 0)
@@ -514,7 +504,7 @@ describe("YieldBox", function () {
             await yieldBox.withdraw(6, Deployer, Deployer, 1000, 0)
             await yieldBox.withdraw(6, Deployer, Deployer, 0, 1000_00000000)
 
-            await yieldBox.depositETH(ethStrategy.address, Deployer, 1000, { value: 1000 })
+            await yieldBox.depositETH(ethStrategy.address, Deployer, { value: 1000 })
             await yieldBox.withdraw(7, Deployer, Deployer, 1000, 0)
         })
 
@@ -530,7 +520,7 @@ describe("YieldBox", function () {
             await yieldBox.connect(alice).withdraw(3, Deployer, Deployer, 1000, 0)
             await yieldBox.connect(alice).withdraw(3, Deployer, Deployer, 0, 1000_00000000)
 
-            await yieldBox.connect(alice).depositETH(Zero, Deployer, 1000, { value: 1000 })
+            await yieldBox.connect(alice).depositETH(Zero, Deployer, { value: 1000 })
             await yieldBox.connect(alice).withdraw(4, Deployer, Deployer, 1000, 0)
 
             await yieldBox.connect(alice).deposit(TokenType.ERC20, token.address, tokenStrategy.address, 0, Deployer, Deployer, 1000, 0)
@@ -545,7 +535,7 @@ describe("YieldBox", function () {
             await yieldBox.connect(alice).withdraw(6, Deployer, Deployer, 1000, 0)
             await yieldBox.connect(alice).withdraw(6, Deployer, Deployer, 0, 1000_00000000)
 
-            await yieldBox.connect(alice).depositETH(ethStrategy.address, Deployer, 1000, { value: 1000 })
+            await yieldBox.connect(alice).depositETH(ethStrategy.address, Deployer, { value: 1000 })
             await yieldBox.connect(alice).withdraw(7, Deployer, Deployer, 1000, 0)
         })
 
