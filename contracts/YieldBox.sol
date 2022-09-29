@@ -456,8 +456,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
         address from,
         address to
     ) public returns (uint256 amountOut, uint256 shareOut) {
-        depositNFTAsset(registerAsset(TokenType.ERC721, contractAddress, strategy, tokenId), from, to);
-        return (1,1);
+        return depositNFTAsset(registerAsset(TokenType.ERC721, contractAddress, strategy, tokenId), from, to);
     }
 
     function depositETH(
