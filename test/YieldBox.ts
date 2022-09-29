@@ -11,6 +11,8 @@ import {
     ERC20Mock__factory,
     ERC20StrategyMock,
     ERC20StrategyMock__factory,
+    ERC721Mock,
+    ERC721Mock__factory,
     MasterContractFullCycleMock__factory,
     MasterContractMock__factory,
     WETH9Mock,
@@ -31,6 +33,7 @@ describe("YieldBox", function () {
     let yieldBox: YieldBox
     let uriBuilder: YieldBoxURIBuilder
     let token: ERC20Mock
+    let erc721: ERC721Mock
     let erc1155: ERC1155Mock
     let tokenStrategy: ERC20StrategyMock
     let erc1155Strategy: ERC1155StrategyMock
@@ -60,6 +63,12 @@ describe("YieldBox", function () {
         token = await new ERC20Mock__factory(deployer).deploy(10000)
         await token.deployed()
         token.approve(yieldBox.address, 10000)
+
+        // ERC721 token
+        erc721 = await new ERC721Mock__factory(deployer).deploy()
+        await erc721.deployed()
+        await erc721.mint(Deployer, 42)
+        erc721.setApprovalForAll(yieldBox.address, true)
 
         // ERC1155 token
         erc1155 = await new ERC1155Mock__factory(deployer).deploy()
@@ -377,6 +386,13 @@ describe("YieldBox", function () {
         it("can withdraw ERC20", async function () {
             await yieldBox.deposit(TokenType.ERC20, token.address, Zero, 0, Deployer, Deployer, 1000, 0)
             await yieldBox.deposit(TokenType.ERC20, token.address, Zero, 0, Deployer, Deployer, 0, 1000_00000000)
+            await yieldBox.withdraw(2, Deployer, Deployer, 1000, 0)
+            await yieldBox.withdraw(2, Deployer, Deployer, 0, 1000_00000000)
+        })
+
+        it.only("can withdraw ERC721", async function () {
+            await yieldBox.deposit(TokenType.ERC721, token.address, Zero, 0, Deployer, Deployer, 1000, 0)
+            await yieldBox.deposit(TokenType.ERC721, token.address, Zero, 0, Deployer, Deployer, 0, 1000_00000000)
             await yieldBox.withdraw(2, Deployer, Deployer, 1000, 0)
             await yieldBox.withdraw(2, Deployer, Deployer, 0, 1000_00000000)
         })
