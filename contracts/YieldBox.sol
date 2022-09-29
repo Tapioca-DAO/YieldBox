@@ -37,6 +37,7 @@ import "./AssetRegister.sol";
 import "./NativeTokenFactory.sol";
 import "./YieldBoxRebase.sol";
 import "./YieldBoxURIBuilder.sol";
+import './ERC721Receiver.sol';
 
 // solhint-disable no-empty-blocks
 
@@ -45,7 +46,7 @@ import "./YieldBoxURIBuilder.sol";
 /// @notice The YieldBox is a vault for tokens. The stored tokens can assigned to strategies.
 /// Yield from this will go to the token depositors.
 /// Any funds transfered directly onto the YieldBox will be lost, use the deposit function instead.
-contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver {
+contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, ERC721Receiver {
     using BoringAddress for address;
     using BoringERC20 for IERC20;
     using BoringERC20 for IWrappedNative;
@@ -79,8 +80,10 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver {
         if (asset.strategy == NO_STRATEGY) {
             if (asset.tokenType == TokenType.ERC20) {
                 return IERC20(asset.contractAddress).safeBalanceOf(address(this));
-            } else {
+            } else if(asset.tokenType == TokenType.ERC1155){
                 return IERC1155(asset.contractAddress).balanceOf(address(this), asset.tokenId);
+            } else{
+                return IERC721(asset.contractAddress).balanceOf(address(this));
             }
         } else {
             return asset.strategy.currentBalance();
@@ -109,7 +112,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver {
         // Checks
         Asset storage asset = assets[assetId];
         require(asset.tokenType != TokenType.Native, "YieldBox: can't deposit Native");
-        require(asset.tokenType != TokenType.ERC721, "YieldBox: use DepositNFT");
+        require(asset.tokenType != TokenType.ERC721, "YieldBox: use depositNFT");
 
         // Effects
         uint256 totalAmount = _tokenBalanceOf(asset);
@@ -150,7 +153,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver {
     /// @param from which account to pull the tokens.
     /// @param to which account to push the tokens.
     /// @return amountOut The amount deposited.
-    /// @return shareOut The deposited amount repesented in shares.
+    /// @return shareOut The deposited amount represented in shares.
     function depositNFTAsset(
         uint256 assetId,
         address from,
@@ -227,6 +230,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver {
         // Checks
         Asset storage asset = assets[assetId];
         require(asset.tokenType != TokenType.Native, "YieldBox: can't withdraw Native");
+        require(asset.tokenType != TokenType.ERC721, "YieldBox: use withdrawNFT");
 
         // Effects
         uint256 totalAmount = _tokenBalanceOf(asset);
@@ -250,8 +254,6 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver {
                 } else {
                     IERC20(asset.contractAddress).safeTransfer(to, amount);
                 }
-            } else if (asset.tokenType == TokenType.ERC721) {
-                IERC721(asset.contractAddress).safeTransferFrom(address(this), to, asset.tokenId);
             } else {
                 // IERC1155
                 IERC1155(asset.contractAddress).safeTransferFrom(address(this), to, asset.tokenId, amount, "");
@@ -261,6 +263,33 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver {
         }
 
         return (amount, share);
+    }
+
+    /// @notice Withdraws an NFT from a user account.
+    /// @param assetId The id of the asset.
+    /// @param from which user to pull the NFT.
+    /// @param to which user to push the NFT.
+    function withdrawNFT(
+        uint256 assetId,
+        address from,
+        address to
+    ) public allowed(from) returns (uint256 amountOut, uint256 shareOut) {
+        // Checks
+        Asset storage asset = assets[assetId];
+        require(asset.tokenType == TokenType.ERC721, "YieldBox: use withdraw");
+
+        // Effects
+        // Unauthorized users can't withdraw NFTs as it an underflow revert would occur
+        _burn(from, assetId, 1);
+
+        // Interactions
+        if (asset.strategy == NO_STRATEGY) {
+            IERC721(asset.contractAddress).safeTransferFrom(address(this), to, asset.tokenId);
+        } else {
+            asset.strategy.withdraw(to, 1);
+        }
+
+        return (1, 1);
     }
 
     function _requireTransferAllowed(address from) internal view override allowed(from) {}
@@ -418,6 +447,17 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver {
         } else {
             return depositAsset(registerAsset(tokenType, contractAddress, strategy, tokenId), from, to, amount, share);
         }
+    }
+
+    function depositNFT(
+        address contractAddress,
+        IStrategy strategy,
+        uint256 tokenId,
+        address from,
+        address to
+    ) public returns (uint256 amountOut, uint256 shareOut) {
+        depositNFTAsset(registerAsset(TokenType.ERC721, contractAddress, strategy, tokenId), from, to);
+        return (1,1);
     }
 
     function depositETH(
