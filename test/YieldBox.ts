@@ -13,6 +13,8 @@ import {
     ERC20StrategyMock__factory,
     ERC721Mock,
     ERC721Mock__factory,
+    ERC721StrategyMock,
+    ERC721StrategyMock__factory,
     MasterContractFullCycleMock__factory,
     MasterContractMock__factory,
     WETH9Mock,
@@ -36,6 +38,7 @@ describe("YieldBox", function () {
     let erc721: ERC721Mock
     let erc1155: ERC1155Mock
     let tokenStrategy: ERC20StrategyMock
+    let erc721Strategy: ERC721StrategyMock
     let erc1155Strategy: ERC1155StrategyMock
     let ethStrategy: ERC20StrategyMock
 
@@ -68,7 +71,10 @@ describe("YieldBox", function () {
         erc721 = await new ERC721Mock__factory(deployer).deploy()
         await erc721.deployed()
         await erc721.mint(Deployer, 42)
+        await erc721.mint(Alice, 777)
+        await erc721.mint(Deployer, 420)
         erc721.setApprovalForAll(yieldBox.address, true)
+        erc721.connect(alice).setApprovalForAll(yieldBox.address, true)
 
         // ERC1155 token
         erc1155 = await new ERC1155Mock__factory(deployer).deploy()
@@ -79,6 +85,9 @@ describe("YieldBox", function () {
         // Strategies
         tokenStrategy = await new ERC20StrategyMock__factory(deployer).deploy(yieldBox.address, token.address)
         await tokenStrategy.deployed()
+
+        erc721Strategy = await new ERC721StrategyMock__factory(deployer).deploy(yieldBox.address, erc721.address, 42)
+        await erc721Strategy.deployed()
 
         erc1155Strategy = await new ERC1155StrategyMock__factory(deployer).deploy(yieldBox.address, erc1155.address, 42)
         await erc1155Strategy.deployed()
@@ -152,6 +161,24 @@ describe("YieldBox", function () {
 
             expect(await yieldBox.balanceOf(Alice, 2)).equals(2000_00000000)
             expect(await token.balanceOf(yieldBox.address)).equals(2000)
+        })
+
+        it("handles deposit of ERC721 token", async function () {
+            // Forbid depositing ERC721 token with `deposit()`
+            await expect(yieldBox.deposit(TokenType.ERC721, erc721.address, Zero, 0, Deployer, Alice, 1, 0)).to.be.revertedWith(
+                "YieldBox: use depositNFT"
+            )
+
+            await expect(yieldBox.depositNFT(erc721.address, Zero, 42, Deployer, Alice))
+                .to.emit(yieldBox, "AssetRegistered")
+                .withArgs(TokenType.ERC721, erc721.address, Zero, 42, 2)
+                .to.emit(erc721, "Transfer")
+                .withArgs(Deployer, yieldBox.address, 42)
+                .to.emit(yieldBox, "TransferSingle")
+                .withArgs(Deployer, Zero, Alice, 2, 1)
+
+            expect(await yieldBox.balanceOf(Alice, 2)).equals(1)
+            expect(await erc721.balanceOf(yieldBox.address)).equals(1)
         })
 
         it("handles deposit of ERC1155 token (Native)", async function () {
@@ -245,6 +272,16 @@ describe("YieldBox", function () {
 
             expect(await token.balanceOf(yieldBox.address)).equals(0)
             expect(await token.balanceOf(tokenStrategy.address)).equals(2000)
+        })
+
+        it("handles deposit of ERC721 token", async function () {
+            await yieldBox.depositNFT(erc721.address, erc721Strategy.address, 42, Deployer, Alice)
+
+            expect(await yieldBox.balanceOf(Alice, 2)).equals(1)
+            expect(await yieldBox.toAmount(2, 1, false)).equals(1)
+
+            expect(await erc721.balanceOf(yieldBox.address)).equals(0)
+            expect(await erc721.balanceOf(erc721Strategy.address)).equals(1)
         })
 
         it("handles deposit of ERC1155 token (Native)", async function () {
@@ -390,11 +427,25 @@ describe("YieldBox", function () {
             await yieldBox.withdraw(2, Deployer, Deployer, 0, 1000_00000000)
         })
 
-        it.only("can withdraw ERC721", async function () {
-            await yieldBox.deposit(TokenType.ERC721, token.address, Zero, 0, Deployer, Deployer, 1000, 0)
-            await yieldBox.deposit(TokenType.ERC721, token.address, Zero, 0, Deployer, Deployer, 0, 1000_00000000)
-            await yieldBox.withdraw(2, Deployer, Deployer, 1000, 0)
-            await yieldBox.withdraw(2, Deployer, Deployer, 0, 1000_00000000)
+        it("can withdraw ERC721", async function () {
+            const assetId42 = await yieldBox.assetCount()
+            await yieldBox.depositNFT(erc721.address, Zero, 42, Deployer, Deployer)
+
+            const assetId420 = await yieldBox.assetCount()
+            await yieldBox.depositNFT(erc721.address, Zero, 420, Deployer, Deployer)
+
+            const assetId777 = await yieldBox.assetCount()
+            await yieldBox.connect(alice).depositNFT(erc721.address, Zero, 777, Alice, Alice)
+
+            await expect(yieldBox.withdraw(assetId42, Deployer, Deployer, 0, 1)).to.be.revertedWith("YieldBox: use withdrawNFT")
+
+            await yieldBox.withdrawNFT(assetId42, Deployer, Deployer)
+            await yieldBox.withdrawNFT(assetId420, Deployer, Deployer)
+
+            await expect(yieldBox.withdrawNFT(assetId777, Deployer, Deployer)).to.be.reverted
+            await expect(yieldBox.withdrawNFT(assetId777, Alice, Deployer)).to.be.reverted
+
+            await yieldBox.connect(alice).withdrawNFT(assetId777, Alice, Deployer)
         })
 
         it("can withdraw ERC1155", async function () {
@@ -414,6 +465,11 @@ describe("YieldBox", function () {
             await yieldBox.deposit(TokenType.ERC20, token.address, tokenStrategy.address, 0, Deployer, Deployer, 0, 1000_00000000)
             await yieldBox.withdraw(2, Deployer, Deployer, 1000, 0)
             await yieldBox.withdraw(2, Deployer, Deployer, 0, 1000_00000000)
+        })
+
+        it("can withdraw ERC20 with strategy", async function () {
+            await yieldBox.depositNFT(erc721.address, erc721Strategy.address, 42, Deployer, Deployer)
+            await yieldBox.withdrawNFT(2, Deployer, Deployer)
         })
 
         it("can withdraw ERC1155 with strategy", async function () {
