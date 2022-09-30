@@ -260,6 +260,32 @@ describe("YieldBox", function () {
 
             expect(await yieldBox.balanceOf(Alice, 1)).equals(0)
         })
+
+        it("revert if deposit returns 0 shares", async function () {
+            const assetId = await yieldBox.assetCount()
+            // Mint 1e8 shares with 1 token because of 1:1e8 ratio
+            await yieldBox.deposit(TokenType.ERC20, token.address, Zero, 0, Deployer, Deployer, 1, 0, 0)
+
+            const minShareOut = await yieldBox.toShare(assetId, 1, false)
+
+            // Create an unbalanced ratio
+            await token.mint(1_000_000_000_000)
+            await token.transfer(yieldBox.address, 1_000_000_000_000)
+
+            // Now any deposit of amount < 1e4 tokens will return 0 shares
+            const tAlice = 1
+            await token.connect(alice).mint(tAlice)
+            await token.connect(alice).approve(yieldBox.address, tAlice)
+            await yieldBox.connect(alice).deposit(TokenType.ERC20, token.address, Zero, 0, Alice, Alice, tAlice, 0, 0)
+            expect(await yieldBox.balanceOf(Alice, 2)).to.be.equal(ethers.BigNumber.from(0))
+
+            // We can prevent front-running/ratio attacks by requiring a minimum share output
+            await token.connect(alice).mint(tAlice)
+            await token.connect(alice).approve(yieldBox.address, tAlice)
+            await expect(
+                yieldBox.connect(alice).deposit(TokenType.ERC20, token.address, Zero, 0, Alice, Alice, tAlice, 0, minShareOut)
+            ).to.be.revertedWith("YieldBox: shareOut too low")
+        })
     })
 
     describe("deposit with strategy", () => {
