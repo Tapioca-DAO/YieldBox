@@ -173,6 +173,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
         address destination = asset.strategy == NO_STRATEGY ? address(this) : address(asset.strategy);
 
         // Interactions
+        IERC721(asset.contractAddress).ownerOf(_tokenId); // Prevent IERC721/IERC20 `safeTransferFrom()` confusion
         IERC721(asset.contractAddress).safeTransferFrom(from, destination, asset.tokenId);
 
         if (asset.strategy != NO_STRATEGY) {
