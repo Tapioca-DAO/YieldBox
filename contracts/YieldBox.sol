@@ -83,7 +83,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
             } else if (asset.tokenType == TokenType.ERC1155) {
                 return IERC1155(asset.contractAddress).balanceOf(address(this), asset.tokenId);
             } else {
-                return IERC721(asset.contractAddress).balanceOf(address(this));
+                return IERC721(asset.contractAddress).ownerOf(address(this)) ? 1 : 0;
             }
         } else {
             return asset.strategy.currentBalance();
