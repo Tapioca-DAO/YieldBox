@@ -35,15 +35,26 @@ interface IYieldBox {
         address from,
         address to,
         uint256 amount,
-        uint256 share
+        uint256 share,
+        uint256 minShareOut
     ) external returns (uint256 amountOut, uint256 shareOut);
 
-    function withdraw(
+    function depositNFTAsset(
         uint256 assetId,
         address from,
+        address to
+    ) external returns (uint256 amountOut, uint256 shareOut);
+
+    function depositETHAsset(
+        uint256 assetId,
         address to,
-        uint256 amount,
-        uint256 share
+        uint256 minShareOut
+    ) external payable returns (uint256 amountOut, uint256 shareOut);
+
+    function withdrawNFT(
+        uint256 assetId,
+        address from,
+        address to
     ) external returns (uint256 amountOut, uint256 shareOut);
 
     function transfer(
