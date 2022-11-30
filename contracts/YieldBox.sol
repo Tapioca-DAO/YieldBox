@@ -83,7 +83,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
             } else if (asset.tokenType == TokenType.ERC1155) {
                 return IERC1155(asset.contractAddress).balanceOf(address(this), asset.tokenId);
             } else {
-                return IERC721(asset.contractAddress).ownerOf(address(this)) ? 1 : 0;
+                return IERC721(asset.contractAddress).ownerOf(asset.tokenId) == address(this) ? 1 : 0;
             }
         } else {
             return asset.strategy.currentBalance();
@@ -173,7 +173,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
         address destination = asset.strategy == NO_STRATEGY ? address(this) : address(asset.strategy);
 
         // Interactions
-        IERC721(asset.contractAddress).ownerOf(_tokenId); // Prevent IERC721/IERC20 `safeTransferFrom()` confusion
+        IERC721(asset.contractAddress).ownerOf(asset.tokenId); // Prevent IERC721/IERC20 `safeTransferFrom()` confusion
         IERC721(asset.contractAddress).safeTransferFrom(from, destination, asset.tokenId);
 
         if (asset.strategy != NO_STRATEGY) {
