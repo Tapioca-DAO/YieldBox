@@ -52,6 +52,8 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
     using BoringERC20 for IWrappedNative;
     using YieldBoxRebase for uint256;
 
+    mapping(uint256 => uint256) public totalAmounts; // Asset => total amount
+
     // ************** //
     // *** EVENTS *** //
     // ************** //
@@ -76,12 +78,11 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
 
     /// @dev Returns the total balance of `token` this contracts holds,
     /// plus the total amount this contract thinks the strategy holds.
-    function _tokenBalanceOf(Asset storage asset) internal view returns (uint256 amount) {
+    function _tokenBalanceOf(Asset memory asset) internal view returns (uint256 amount) {
         if (asset.strategy == NO_STRATEGY) {
-            if (asset.tokenType == TokenType.ERC20) {
-                return IERC20(asset.contractAddress).safeBalanceOf(address(this));
-            } else if (asset.tokenType == TokenType.ERC1155) {
-                return IERC1155(asset.contractAddress).balanceOf(address(this), asset.tokenId);
+            if (asset.tokenType == TokenType.ERC20 || asset.tokenType == TokenType.ERC1155) {
+                uint256 assetId = ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId];
+                return totalAmounts[assetId];
             } else {
                 return IERC721(asset.contractAddress).ownerOf(asset.tokenId) == address(this) ? 1 : 0;
             }
@@ -149,6 +150,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
             asset.strategy.deposited(amount);
         }
 
+        totalAmounts[assetId] += amount;
         return (amount, share);
     }
 
@@ -218,6 +220,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
             asset.strategy.deposited(msg.value);
         }
 
+        totalAmounts[assetId] += msg.value;
         return (msg.value, share);
     }
 
@@ -269,6 +272,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
             asset.strategy.withdraw(to, amount);
         }
 
+        totalAmounts[assetId] -= amount;
         return (amount, share);
     }
 
