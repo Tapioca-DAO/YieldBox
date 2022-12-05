@@ -144,9 +144,10 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
 
         if (asset.strategy != NO_STRATEGY) {
             asset.strategy.deposited(amount);
+        } else {
+            totalAmounts[assetId] += amount;
         }
 
-        totalAmounts[assetId] += amount;
         return (amount, share);
     }
 
@@ -209,9 +210,10 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
 
         if (asset.strategy != NO_STRATEGY) {
             asset.strategy.deposited(msg.value);
+        } else {
+            totalAmounts[assetId] += msg.value;
         }
 
-        totalAmounts[assetId] += msg.value;
         return (msg.value, share);
     }
 
@@ -259,11 +261,12 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
                 // IERC1155
                 IERC1155(asset.contractAddress).safeTransferFrom(address(this), to, asset.tokenId, amount, "");
             }
+
+            totalAmounts[assetId] -= amount;
         } else {
             asset.strategy.withdraw(to, amount);
         }
 
-        totalAmounts[assetId] -= amount;
         return (amount, share);
     }
 
