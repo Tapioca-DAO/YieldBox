@@ -11,9 +11,4 @@ contract ERC20Mock is ERC20 {
         // Update total supply
         totalSupply = _initialAmount;
     }
-
-    function mint(uint256 amount) public {
-        balanceOf[msg.sender] += amount;
-        totalSupply += amount;
-    }
 }

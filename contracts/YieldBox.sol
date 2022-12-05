@@ -101,8 +101,6 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
     /// @param to which account to push the tokens.
     /// @param amount Token amount in native representation to deposit.
     /// @param share Token amount represented in shares to deposit. Takes precedence over `amount`.
-    /// @param minShareOut The minimum amount of shares required for the transaction to continue.
-    /// Useful to prevent front-running and ratio attacks due to 1st depositor ratio influence.
     /// @return amountOut The amount deposited.
     /// @return shareOut The deposited amount repesented in shares.
     function depositAsset(
@@ -110,8 +108,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
         address from,
         address to,
         uint256 amount,
-        uint256 share,
-        uint256 minShareOut
+        uint256 share
     ) public allowed(from) returns (uint256 amountOut, uint256 shareOut) {
         // Checks
         Asset storage asset = assets[assetId];
@@ -127,7 +124,6 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
             // amount may be lower than the value of share due to rounding, in that case, add 1 to amount (Always round up)
             amount = share._toAmount(totalSupply[assetId], totalAmount, true);
         }
-        require(share >= minShareOut, "YieldBox: shareOut too low");
 
         _mint(to, assetId, share);
 
@@ -185,11 +181,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
         return (1, 1);
     }
 
-    function depositETHAsset(
-        uint256 assetId,
-        address to,
-        uint256 minShareOut
-    )
+    function depositETHAsset(uint256 assetId, address to)
         public
         payable
         returns (
@@ -205,7 +197,6 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
 
         // Effects
         uint256 share = msg.value._toShares(totalSupply[assetId], _tokenBalanceOf(asset), false);
-        require(share >= minShareOut, "YieldBox: shareOut too low");
 
         _mint(to, assetId, share);
 
@@ -450,14 +441,13 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
         address from,
         address to,
         uint256 amount,
-        uint256 share,
-        uint256 minShareOut
+        uint256 share
     ) public returns (uint256 amountOut, uint256 shareOut) {
         if (tokenType == TokenType.Native) {
             // If native token, register it as an ERC1155 asset (as that's what it is)
-            return depositAsset(registerAsset(TokenType.ERC1155, address(this), strategy, tokenId), from, to, amount, share, minShareOut);
+            return depositAsset(registerAsset(TokenType.ERC1155, address(this), strategy, tokenId), from, to, amount, share);
         } else {
-            return depositAsset(registerAsset(tokenType, contractAddress, strategy, tokenId), from, to, amount, share, minShareOut);
+            return depositAsset(registerAsset(tokenType, contractAddress, strategy, tokenId), from, to, amount, share);
         }
     }
 
@@ -471,11 +461,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
         return depositNFTAsset(registerAsset(TokenType.ERC721, contractAddress, strategy, tokenId), from, to);
     }
 
-    function depositETH(
-        IStrategy strategy,
-        address to,
-        uint256 minShareOut
-    ) public payable returns (uint256 amountOut, uint256 shareOut) {
-        return depositETHAsset(registerAsset(TokenType.ERC20, address(wrappedNative), strategy, 0), to, minShareOut);
+    function depositETH(IStrategy strategy, address to) public payable returns (uint256 amountOut, uint256 shareOut) {
+        return depositETHAsset(registerAsset(TokenType.ERC20, address(wrappedNative), strategy, 0), to);
     }
 }
