@@ -1,0 +1,352 @@
+diff -ruN .gitignore .gitignore
+--- .gitignore	1970-01-01 01:00:00
++++ .gitignore	2022-12-28 20:04:06
+@@ -0,0 +1,2 @@
++*
++!.gitignore
+\ No newline at end of file
+diff -ruN YieldBox.sol YieldBox.sol
+--- YieldBox.sol	2022-12-27 00:42:07
++++ YieldBox.sol	2022-12-28 19:57:27
+@@ -38,6 +38,7 @@
+ import "./YieldBoxRebase.sol";
+ import "./YieldBoxURIBuilder.sol";
+ import "./ERC721Receiver.sol";
++import "../harness/DummyBoringAddress.sol";        // HARNESS: added library from node_modules
+ 
+ // solhint-disable no-empty-blocks
+ 
+@@ -47,7 +48,7 @@
+ /// Yield from this will go to the token depositors.
+ /// Any funds transfered directly onto the YieldBox will be lost, use the deposit function instead.
+ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, ERC721Receiver {
+-    using BoringAddress for address;
++    using DummyBoringAddress for address;        // HARNESS: BoringAddress -> DummyBoringAddress
+     using BoringERC20 for IERC20;
+     using BoringERC20 for IWrappedNative;
+     using YieldBoxRebase for uint256;
+@@ -64,7 +65,7 @@
+     // *** CONSTRUCTOR *** //
+     // ******************* //
+ 
+-    IWrappedNative public immutable wrappedNative;
++    IWrappedNative public  wrappedNative;
+     YieldBoxURIBuilder public immutable uriBuilder;
+ 
+     constructor(IWrappedNative wrappedNative_, YieldBoxURIBuilder uriBuilder_) {
+@@ -78,7 +79,7 @@
+ 
+     /// @dev Returns the total balance of `token` this contracts holds,
+     /// plus the total amount this contract thinks the strategy holds.
+-    function _tokenBalanceOf(Asset memory asset) internal view returns (uint256 amount) {
++    function _tokenBalanceOf(Asset memory asset) public view returns (uint256 amount) {      // HARNESS: internal -> public; storage -> memory
+         if (asset.strategy == NO_STRATEGY) {
+             if (asset.tokenType == TokenType.ERC20 || asset.tokenType == TokenType.ERC1155) {
+                 uint256 assetId = ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId];
+diff -ruN YieldBoxRebase.sol YieldBoxRebase.sol
+--- YieldBoxRebase.sol	2022-12-27 00:39:19
++++ YieldBoxRebase.sol	2022-12-28 20:06:44
+@@ -25,16 +25,18 @@
+         // 1 amount/1e8 shares already burned. This also starts with a 1 : 1e8 ratio which
+         // functions like 8 decimal fixed point math. This prevents ratio attacks or inaccuracy
+         // due to 'gifting' or rebasing tokens. (Up to a certain degree)
+-        totalAmount++;
+-        totalShares_ += 1e8;
++        // totalAmount++;
++        // totalShares_ += 1e8;
+ 
+-        // Calculte the shares using te current amount to share ratio
+-        share = (amount * totalShares_) / totalAmount;
++        // // Calculte the shares using te current amount to share ratio
++        // share = (amount * totalShares_) / totalAmount;
+ 
+-        // Default is to round down (Solidity), round up if required
+-        if (roundUp && (share * totalAmount) / totalShares_ < amount) {
+-            share++;
+-        }
++        // // Default is to round down (Solidity), round up if required
++        // if (roundUp && (share * totalAmount) / totalShares_ < amount) {
++        //     share++;
++        // }
++
++        share = amount * 2;
+     }
+ 
+     /// @notice Calculates the elastic value in relationship to `base` and `total`.
+@@ -48,14 +50,20 @@
+         // 1 amount/1e8 shares already burned. This also starts with a 1 : 1e8 ratio which
+         // functions like 8 decimal fixed point math. This prevents ratio attacks or inaccuracy
+         // due to 'gifting' or rebasing tokens. (Up to a certain degree)
+-        totalAmount++;
+-        totalShares_ += 1e8;
++        // totalAmount++;
++        // totalShares_ += 1e8;
+ 
+-        // Calculte the amount using te current amount to share ratio
+-        amount = (share * totalAmount) / totalShares_;
++        // // Calculte the amount using te current amount to share ratio
++        // amount = (share * totalAmount) / totalShares_;
+ 
+-        // Default is to round down (Solidity), round up if required
+-        if (roundUp && (amount * totalShares_) / totalAmount < share) {
++        // // Default is to round down (Solidity), round up if required
++        // if (roundUp && (amount * totalShares_) / totalAmount < share) {
++        //     amount++;
++        // }
++
++        amount = share / 2;
++
++        if (roundUp && amount * 2 < share) {
+             amount++;
+         }
+     }
+diff -ruN strategies/SimpleMintStrategy.sol strategies/SimpleMintStrategy.sol
+--- strategies/SimpleMintStrategy.sol	1970-01-01 01:00:00
++++ strategies/SimpleMintStrategy.sol	2022-12-28 19:57:27
+@@ -0,0 +1,121 @@
++// SPDX-License-Identifier: MIT
++pragma solidity 0.8.9;
++// pragma experimental ABIEncoderV2;
++
++//TODO - replace this with our dummy?
++// import "@boringcrypto/boring-solidity/contracts/interfaces/IERC20.sol";
++// import "@boringcrypto/boring-solidity/contracts/interfaces/IERC721.sol";
++// import "@boringcrypto/boring-solidity/contracts/interfaces/IERC1155.sol";
++// Maybe swap this to any other IERC20 - WE MUST, since those don't have mintable
++
++import "../enums/YieldBoxTokenType.sol";
++import "../interfaces/IStrategy.sol";
++import {BaseStrategy} from "./BaseStrategy.sol";
++
++
++// DUMMY INTERFAES - just what needed
++interface IERC20 {
++    function balanceOf(address _owner) external view returns (uint256 balance);
++    function transfer(address _to, uint256 _value) external returns (bool success);
++    function mint(address _to, uint256 _value) external returns (bool success);
++}
++
++interface IERC721 {
++    function ownerOf(uint256 _tokenId) external view returns (address);
++    function transferFrom(address _from, address _to, uint256 _tokenId) external;
++    // function mint
++}
++
++interface IERC1155 {
++    function balanceOf(address _owner, uint256 _id) external view returns (uint256);
++    function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _value, bytes calldata _data) external;
++    function mint(address _to, uint256 _id, uint256 _amount) external returns (bool success);
++}
++
++
++contract SimpleMintStrategy is BaseStrategy{
++    // A single token strategy that just mints more of the token for each deposit.
++    // This strategy assumes the token is mintable and that it is the minter for it.
++    // 
++    // This could simulate accumilated yields etc. 
++    // Note that this strategy should be used for a SINGLE token. It has no idea about other tokens than what it was constructed for.
++
++    TokenType public tokenType;
++    uint256 public tokenId;
++    address public tokenAddress;
++    uint256 public mintAmount; //Should this be immutable too?? #TODO
++    // uint256 public _balance;
++
++    constructor(IYieldBox _yieldBox, address _tokenAddress, TokenType _tokenType, uint256 _tokenId, uint256 _mintAmount) BaseStrategy(_yieldBox) {
++        tokenType = _tokenType;
++        tokenAddress = _tokenAddress;
++        tokenId = _tokenId; 
++        mintAmount = _mintAmount;
++    }
++
++    function contractAddress() public view returns (address) {
++        return tokenAddress;
++    }
++
++    function _currentBalance() internal view override returns (uint256 amount) {
++        // ERC20 just gets address
++        if (tokenType == TokenType.ERC20) {
++            return IERC20(tokenAddress).balanceOf(address(this));
++        }
++        else if (tokenType == TokenType.ERC721) {
++            return ((IERC721(tokenAddress).ownerOf(tokenId) == address(this)) ? 1 : 0);
++        }
++        // ERC1155 (and native?)
++        else {
++            return IERC1155(tokenAddress).balanceOf(address(this), tokenId);
++        }
++    }
++
++    function _mint() internal {
++        // MINT!!
++        if (tokenType == TokenType.ERC20) {
++            IERC20(tokenAddress).mint(address(this), mintAmount);
++        }
++        else if (tokenType == TokenType.ERC721) {
++            // DO NOTHING...?
++        }
++        // ERC1155 (and native?)
++        else {
++            IERC1155(tokenAddress).mint(address(this), tokenId, mintAmount);
++        }
++    }
++
++    // Public function to simulate reward generation
++    function getGains() public {
++        _mint();
++    }
++
++    function _deposited(uint256 amount) internal override {
++        amount = 0; //silence a warning
++        // _mint();
++    }
++
++    function _withdraw(address to, uint256 amount) internal override {        
++        //// TODO: maybe should mint here as well? (copy mint block?)
++        // _mint();
++        
++        if (tokenType == TokenType.ERC20) {
++            IERC20(tokenAddress).transfer(to, amount);
++        }
++        else if (tokenType == TokenType.ERC721) {
++            IERC721(tokenAddress).transferFrom(address(this), to, tokenId);
++        }
++        // ERC1155 (and native?)
++        else {
++            IERC1155(tokenAddress).safeTransferFrom(address(this), to, tokenId, amount, "");
++        }        
++    }
++
++    function description() external pure returns (string memory description_) {
++        return "A simple mint-based strategy. MOCK CONTRACT";
++    }
++
++    function name() external pure returns (string memory name_) {
++        return "SimpleMintStrategy";
++    }
++}
+diff -ruN strategies/SimpleMintStrategyAdditional.sol strategies/SimpleMintStrategyAdditional.sol
+--- strategies/SimpleMintStrategyAdditional.sol	1970-01-01 01:00:00
++++ strategies/SimpleMintStrategyAdditional.sol	2022-12-28 19:57:27
+@@ -0,0 +1,121 @@
++// SPDX-License-Identifier: MIT
++pragma solidity 0.8.9;
++// pragma experimental ABIEncoderV2;
++
++//TODO - replace this with our dummy?
++// import "@boringcrypto/boring-solidity/contracts/interfaces/IERC20.sol";
++// import "@boringcrypto/boring-solidity/contracts/interfaces/IERC721.sol";
++// import "@boringcrypto/boring-solidity/contracts/interfaces/IERC1155.sol";
++// Maybe swap this to any other IERC20 - WE MUST, since those don't have mintable
++
++import "../enums/YieldBoxTokenType.sol";
++import "../interfaces/IStrategy.sol";
++import {BaseStrategy} from "./BaseStrategy.sol";
++
++
++// DUMMY INTERFAES - just what needed
++interface IERC20 {
++    function balanceOf(address _owner) external view returns (uint256 balance);
++    function transfer(address _to, uint256 _value) external returns (bool success);
++    function mint(address _to, uint256 _value) external returns (bool success);
++}
++
++interface IERC721 {
++    function ownerOf(uint256 _tokenId) external view returns (address);
++    function transferFrom(address _from, address _to, uint256 _tokenId) external;
++    // function mint
++}
++
++interface IERC1155 {
++    function balanceOf(address _owner, uint256 _id) external view returns (uint256);
++    function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _value, bytes calldata _data) external;
++    function mint(address _to, uint256 _id, uint256 _amount) external returns (bool success);
++}
++
++
++contract SimpleMintStrategyAdditional is BaseStrategy{
++    // A single token strategy that just mints more of the token for each deposit.
++    // This strategy assumes the token is mintable and that it is the minter for it.
++    // 
++    // This could simulate accumilated yields etc. 
++    // Note that this strategy should be used for a SINGLE token. It has no idea about other tokens than what it was constructed for.
++
++    TokenType public tokenType;
++    uint256 public tokenId;
++    address public tokenAddress;
++    uint256 public mintAmount; //Should this be immutable too?? #TODO
++    // uint256 public _balance;
++
++    constructor(IYieldBox _yieldBox, address _tokenAddress, TokenType _tokenType, uint256 _tokenId, uint256 _mintAmount) BaseStrategy(_yieldBox) {
++        tokenType = _tokenType;
++        tokenAddress = _tokenAddress;
++        tokenId = _tokenId; 
++        mintAmount = _mintAmount;
++    }
++
++    function contractAddress() public view returns (address) {
++        return tokenAddress;
++    }
++
++    function _currentBalance() internal view override returns (uint256 amount) {
++        // ERC20 just gets address
++        if (tokenType == TokenType.ERC20) {
++            return IERC20(tokenAddress).balanceOf(address(this));
++        }
++        else if (tokenType == TokenType.ERC721) {
++            return ((IERC721(tokenAddress).ownerOf(tokenId) == address(this)) ? 1 : 0);
++        }
++        // ERC1155 (and native?)
++        else {
++            return IERC1155(tokenAddress).balanceOf(address(this), tokenId);
++        }
++    }
++
++    function _mint() internal {
++        // MINT!!
++        if (tokenType == TokenType.ERC20) {
++            IERC20(tokenAddress).mint(address(this), mintAmount);
++        }
++        else if (tokenType == TokenType.ERC721) {
++            // DO NOTHING...?
++        }
++        // ERC1155 (and native?)
++        else {
++            IERC1155(tokenAddress).mint(address(this), tokenId, mintAmount);
++        }
++    }
++
++    // Public function to simulate reward generation
++    function getGains() public {
++        _mint();
++    }
++
++    function _deposited(uint256 amount) internal override {
++        amount = 0; //silence a warning
++        // _mint();
++    }
++
++    function _withdraw(address to, uint256 amount) internal override {        
++        //// TODO: maybe should mint here as well? (copy mint block?)
++        // _mint();
++        
++        if (tokenType == TokenType.ERC20) {
++            IERC20(tokenAddress).transfer(to, amount);
++        }
++        else if (tokenType == TokenType.ERC721) {
++            IERC721(tokenAddress).transferFrom(address(this), to, tokenId);
++        }
++        // ERC1155 (and native?)
++        else {
++            IERC1155(tokenAddress).safeTransferFrom(address(this), to, tokenId, amount, "");
++        }        
++    }
++
++    function description() external pure returns (string memory description_) {
++        return "A simple mint-based strategy. MOCK CONTRACT";
++    }
++
++    function name() external pure returns (string memory name_) {
++        return "SimpleMintStrategy";
++    }
++}

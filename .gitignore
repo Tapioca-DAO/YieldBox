@@ -4,6 +4,9 @@ cache/
 .cache/
 coverage/
 node_modules/
+.certora_sources/
+emv-*/
+certora_debug_log.txt
 package-lock.json
 .coverage_artifacts/
 .coverage_contracts/
@@ -17,3 +20,8 @@ yarn-error.log
 deployments/localhost
 typechain-types
 workbench/contracts.json
+
+# Certora
+.certora*
+.last_confs
+certora_*
