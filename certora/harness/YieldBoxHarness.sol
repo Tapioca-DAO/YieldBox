@@ -5,6 +5,8 @@ import "../munged/YieldBox.sol";
 import "../munged/AssetRegister.sol";
 
 contract YieldBoxHarness is YieldBox {
+    using YieldBoxRebase for uint256;
+    
     constructor(IWrappedNative wrappedNative_, YieldBoxURIBuilder uriBuilder_) YieldBox(wrappedNative_, uriBuilder_) {}
 
     // all these functions can revert
@@ -45,18 +47,36 @@ contract YieldBoxHarness is YieldBox {
     }
 
     function assetsIdentical(uint256 i, uint256 j) public view returns(bool) {
-        bool isIdentical = assets[i].tokenType == assets[j].tokenType &&
+        if(i >= assets.length || j >= assets.length){
+            return false;
+        } else {
+            return assets[i].tokenType == assets[j].tokenType &&
                assets[i].contractAddress == assets[j].contractAddress &&
                assets[i].strategy == assets[j].strategy &&
                assets[i].tokenId == assets[j].tokenId;
-        return i >= assets.length || j >= assets.length ? false : isIdentical;
+        }
     }        
 
     function assetsIdentical1(uint256 i, Asset memory asset) public view returns(bool) {
-        bool isIdentical =  assets[i].tokenType == asset.tokenType &&
+        if (i >= assets.length) {
+            return false;
+        } else {
+            return assets[i].tokenType == asset.tokenType &&
                assets[i].contractAddress == asset.contractAddress &&
                assets[i].strategy == asset.strategy &&
                assets[i].tokenId == asset.tokenId;
-        return i >= assets.length ? false : isIdentical;
+        }
+    }
+
+    function ethBalanceOfAdress(address addr) public returns(uint256) {
+        return address(addr).balance;
+    }
+
+    function toShares(uint256 amount, uint256 totalShares_, uint256 totalAmount, bool roundUp) public returns(uint256) {
+        return amount._toShares(totalShares_, totalAmount, roundUp);
+    }
+
+    function toAmount(uint256 share, uint256 totalShares_, uint256 totalAmount, bool roundUp) public returns(uint256) {
+        return share._toAmount(totalShares_, totalAmount, roundUp);
     }
 }
