@@ -19,9 +19,9 @@ certoraRun  certora/harness/YieldBoxHarness.sol \
     --verify YieldBoxHarness:certora/spec/yieldBox.spec \
     --link YieldBoxHarness:wrappedNative=DummyWeth \
     --solc solc8.9 \
-    --staging \
+    --cloud \
     --optimistic_loop \
+    --rule mapArrayCorrealtion assetIdtoAssetLength erc20HasTokenIdZero balanceOfAddressZeroERC20 balanceOfAddressZeroYieldBox tokenTypeValidity sharesToTokensRatioNFT withdrawIntegrity yielBoxETHAlwaysZero strategyCorrelatesAsset tokenInterfaceConfusion nftWithdrawReverts dontBurnSharesWithdrawNFT depositETHCorrectness \
     --send_only \
-    --rule_sanity basic \
     --settings -t=2000,-mediumTimeout=2000,-depth=100 \
     --msg "YieldBox - all"

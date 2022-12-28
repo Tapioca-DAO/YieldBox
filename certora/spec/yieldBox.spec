@@ -492,8 +492,8 @@ rule strategyCorrelatesAsset(env e, env e2, method f) filtered {f -> excludeMeth
 ////////////////////////////////////////////////////////////////////////////
 
 
-// updated code - reachability fails (proves that bug was fixed because now it's impossible to deposit confused tokens)
-// new code - reachability fails (proves that bug was fixed because now it's impossible to deposit confused tokens)
+// updated code - verified reachability fails (proves that bug was fixed because any ERC20 balance is unchanged)
+// new code - verified (proves that bug was fixed because any ERC20 balance is unchanged)
 // old code - fails (there is a bug)
 rule tokenInterfaceConfusion(env e)
 {
@@ -502,26 +502,25 @@ rule tokenInterfaceConfusion(env e)
     YieldData.Asset asset;
     uint assetId;
 
+    address randomAddress;
+
     require assetsIdentical1(assetId, asset);
     require getAssetId(asset) == assetId;
 
-    require asset.tokenType == YieldData.TokenType.ERC721;
-    require asset.contractAddress == dummyERC20;
-
-    uint erc20BalanceBefore = dummyERC20.balanceOf(e, e.msg.sender);
+    uint erc20BalanceBefore = dummyERC20.balanceOf(e, randomAddress);
 
     amountOut, shareOut = depositNFTAsset(e, assetId, from, to);
 
-    uint erc20BalanceAfter = dummyERC20.balanceOf(e, e.msg.sender);
+    uint erc20BalanceAfter = dummyERC20.balanceOf(e, randomAddress);
 
-    assert erc20BalanceBefore == erc20BalanceAfter;
+    assert (asset.tokenType == YieldData.TokenType.ERC721 && asset.contractAddress == dummyERC20) => erc20BalanceBefore == erc20BalanceAfter;
 }
 
 
 
-// updated code - verified becuase withdrawNFT() was created
-// new code - verified becuase withdrawNFT() was created
-// old code - verified (there is a bug) because _tokenBalanceOf() doesn't have ERC721 branch, thus withdraw always reverts
+// updated code - violated becuase withdrawNFT() was created
+// new code - violated becuase withdrawNFT() was created
+// old code - violated (there is a bug) because _tokenBalanceOf() doesn't have ERC721 branch, thus withdraw always reverts
 rule withdrawForNFTReverts()
 {
     env e;
@@ -536,14 +535,13 @@ rule withdrawForNFTReverts()
     amountOut, shareOut = withdraw@withrevert(e, assetId, from, to, amount, share);
     bool reverted = lastReverted;
 
-    assert getAssetTokenType(assetId) == YieldData.TokenType.ERC721 &&
-           getAssetStrategy(assetId) == 0 &&
-           getAssetAddress(assetId) == dummyERC721 =>
-           reverted;
+    assert !reverted => (getAssetTokenType(assetId) == YieldData.TokenType.ERC721 ||
+           getAssetStrategy(assetId) == 0 ||
+           getAssetAddress(assetId) == dummyERC721);
 }
 
-// updated code - violated (proves fix)
-// new code - violated (proves fix)
+// updated code - verified (proves fix)
+// new code - verified (proves fix)
 rule nftWithdrawReverts()
 {
     env e;
@@ -557,10 +555,9 @@ rule nftWithdrawReverts()
     amountOut, shareOut = withdrawNFT@withrevert(e, assetId, from, to);
     bool reverted = lastReverted;
 
-    assert getAssetTokenType(assetId) == YieldData.TokenType.ERC721 &&
-           getAssetStrategy(assetId) == 0 &&
-           getAssetAddress(assetId) == dummyERC721 =>
-           reverted;
+    assert !reverted => (getAssetTokenType(assetId) == YieldData.TokenType.ERC721 ||
+           getAssetStrategy(assetId) == 0 ||
+           getAssetAddress(assetId) == dummyERC721);
 }
 
 
@@ -639,7 +636,6 @@ rule sharesAfterDeposit()
     require assetId != assetIdRand;
 
     amountOut, shareOut = deposit(e, tokenType, contractAddress, strategy, tokenId, from, to, amount, share);
-    // amountOut, shareOut = depositAsset(e, assetId, from, to, amount, share);
 
     assert amount > 0 => shareOut > 0;
 }
@@ -648,7 +644,7 @@ rule sharesAfterDeposit()
 // updated code - verified (bug fixed)
 // new code - verified (bug fixed)
 // old code - fails (there is a bug)
-rule depositETHCorrectnes()
+rule depositETHCorrectness()
 {
     env e; env e2;
     require e2.msg.sender != currentContract && e2.msg.sender != Strategy && e2.msg.sender != dummyWeth;

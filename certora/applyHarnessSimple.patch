@@ -1,6 +1,13 @@
+diff -ruN .gitignore .gitignore
+--- .gitignore	1970-01-01 01:00:00
++++ .gitignore	2022-12-28 20:04:06
+@@ -0,0 +1,2 @@
++*
++!.gitignore
+\ No newline at end of file
 diff -ruN YieldBox.sol YieldBox.sol
 --- YieldBox.sol	2022-12-27 00:42:07
-+++ YieldBox.sol	2022-12-27 00:43:04
++++ YieldBox.sol	2022-12-28 19:57:27
 @@ -38,6 +38,7 @@
  import "./YieldBoxRebase.sol";
  import "./YieldBoxURIBuilder.sol";
@@ -38,7 +45,7 @@ diff -ruN YieldBox.sol YieldBox.sol
                  uint256 assetId = ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId];
 diff -ruN YieldBoxRebase.sol YieldBoxRebase.sol
 --- YieldBoxRebase.sol	2022-12-27 00:39:19
-+++ YieldBoxRebase.sol	2022-12-28 00:43:10
++++ YieldBoxRebase.sol	2022-12-28 20:06:44
 @@ -25,16 +25,18 @@
          // 1 amount/1e8 shares already burned. This also starts with a 1 : 1e8 ratio which
          // functions like 8 decimal fixed point math. This prevents ratio attacks or inaccuracy
@@ -95,7 +102,7 @@ diff -ruN YieldBoxRebase.sol YieldBoxRebase.sol
      }
 diff -ruN strategies/SimpleMintStrategy.sol strategies/SimpleMintStrategy.sol
 --- strategies/SimpleMintStrategy.sol	1970-01-01 01:00:00
-+++ strategies/SimpleMintStrategy.sol	2022-12-27 00:43:04
++++ strategies/SimpleMintStrategy.sol	2022-12-28 19:57:27
 @@ -0,0 +1,121 @@
 +// SPDX-License-Identifier: MIT
 +pragma solidity 0.8.9;
@@ -220,7 +227,7 @@ diff -ruN strategies/SimpleMintStrategy.sol strategies/SimpleMintStrategy.sol
 +}
 diff -ruN strategies/SimpleMintStrategyAdditional.sol strategies/SimpleMintStrategyAdditional.sol
 --- strategies/SimpleMintStrategyAdditional.sol	1970-01-01 01:00:00
-+++ strategies/SimpleMintStrategyAdditional.sol	2022-12-27 00:43:04
++++ strategies/SimpleMintStrategyAdditional.sol	2022-12-28 19:57:27
 @@ -0,0 +1,121 @@
 +// SPDX-License-Identifier: MIT
 +pragma solidity 0.8.9;

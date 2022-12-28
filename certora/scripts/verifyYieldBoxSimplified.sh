@@ -19,10 +19,9 @@ certoraRun  certora/harness/YieldBoxHarness.sol \
     --verify YieldBoxHarness:certora/spec/yieldBox.spec \
     --link YieldBoxHarness:wrappedNative=DummyWeth \
     --solc solc8.9 \
-    --staging master \
+    --cloud \
     --optimistic_loop \
     --send_only \
-    --rule_sanity basic \
     --rule sharesToTokensRatio \
-    --settings -t=2000,-mediumTimeout=2000,-depth=100,-divideNoRemainder=true \
+    --settings -t=2000,-mediumTimeout=2000,-depth=100 \
     --msg "YieldBox - sharesToTokensRatio with simplified token/shares ratio"

@@ -19,10 +19,9 @@ certoraRun  certora/harness/YieldBoxHarness.sol \
     --verify YieldBoxHarness:certora/spec/yieldBox.spec \
     --link YieldBoxHarness:wrappedNative=DummyWeth \
     --solc solc8.9 \
-    --staging master \
+    --cloud \
     --optimistic_loop \
     --send_only \
-    --rule_sanity basic \
     --rule sharesAfterDeposit \
     --settings -t=2000,-mediumTimeout=2000,-depth=100,-divideNoRemainder=true \
     --msg "YieldBox - sharesAfterDeposit with noRemainder flag"
