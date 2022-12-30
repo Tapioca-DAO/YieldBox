@@ -3,11 +3,11 @@ name: certora-formal_verification
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
     branches:
       - certora
-      - main
+      - master
 
   workflow_dispatch:
 
