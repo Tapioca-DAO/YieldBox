@@ -1,13 +1,13 @@
 diff -ruN .gitignore .gitignore
 --- .gitignore	1970-01-01 01:00:00
-+++ .gitignore	2022-12-28 20:04:06
++++ .gitignore	2022-12-28 20:08:06
 @@ -0,0 +1,2 @@
 +*
 +!.gitignore
 \ No newline at end of file
 diff -ruN YieldBox.sol YieldBox.sol
---- YieldBox.sol	2022-12-27 00:42:07
-+++ YieldBox.sol	2022-12-28 19:57:27
+--- YieldBox.sol	2023-01-03 16:00:13
++++ YieldBox.sol	2022-12-28 20:08:06
 @@ -38,6 +38,7 @@
  import "./YieldBoxRebase.sol";
  import "./YieldBoxURIBuilder.sol";
@@ -38,14 +38,14 @@ diff -ruN YieldBox.sol YieldBox.sol
  
      /// @dev Returns the total balance of `token` this contracts holds,
      /// plus the total amount this contract thinks the strategy holds.
--    function _tokenBalanceOf(Asset memory asset) internal view returns (uint256 amount) {
+-    function _tokenBalanceOf(Asset storage asset) internal view returns (uint256 amount) {
 +    function _tokenBalanceOf(Asset memory asset) public view returns (uint256 amount) {      // HARNESS: internal -> public; storage -> memory
          if (asset.strategy == NO_STRATEGY) {
              if (asset.tokenType == TokenType.ERC20 || asset.tokenType == TokenType.ERC1155) {
                  uint256 assetId = ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId];
 diff -ruN YieldBoxRebase.sol YieldBoxRebase.sol
 --- YieldBoxRebase.sol	2022-12-27 00:39:19
-+++ YieldBoxRebase.sol	2022-12-28 19:57:27
++++ YieldBoxRebase.sol	2023-01-03 16:01:08
 @@ -35,6 +35,8 @@
          if (roundUp && (share * totalAmount) / totalShares_ < amount) {
              share++;
@@ -69,7 +69,7 @@ diff -ruN YieldBoxRebase.sol YieldBoxRebase.sol
  }
 diff -ruN strategies/SimpleMintStrategy.sol strategies/SimpleMintStrategy.sol
 --- strategies/SimpleMintStrategy.sol	1970-01-01 01:00:00
-+++ strategies/SimpleMintStrategy.sol	2022-12-28 19:57:27
++++ strategies/SimpleMintStrategy.sol	2022-12-28 20:08:06
 @@ -0,0 +1,121 @@
 +// SPDX-License-Identifier: MIT
 +pragma solidity 0.8.9;
@@ -194,7 +194,7 @@ diff -ruN strategies/SimpleMintStrategy.sol strategies/SimpleMintStrategy.sol
 +}
 diff -ruN strategies/SimpleMintStrategyAdditional.sol strategies/SimpleMintStrategyAdditional.sol
 --- strategies/SimpleMintStrategyAdditional.sol	1970-01-01 01:00:00
-+++ strategies/SimpleMintStrategyAdditional.sol	2022-12-28 19:57:27
++++ strategies/SimpleMintStrategyAdditional.sol	2022-12-28 20:08:06
 @@ -0,0 +1,121 @@
 +// SPDX-License-Identifier: MIT
 +pragma solidity 0.8.9;
