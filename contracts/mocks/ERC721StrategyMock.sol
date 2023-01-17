@@ -8,7 +8,6 @@ import "../interfaces/IStrategy.sol";
 import "../interfaces/IYieldBox.sol";
 import "../ERC721Receiver.sol";
 
-
 // solhint-disable const-name-snakecase
 // solhint-disable no-empty-blocks
 
@@ -22,7 +21,11 @@ contract ERC721StrategyMock is IStrategy, ERC721Receiver {
 
     IYieldBox public immutable override yieldBox;
 
-    constructor(IYieldBox yieldBox_, address token, uint256 tokenId_) {
+    constructor(
+        IYieldBox yieldBox_,
+        address token,
+        uint256 tokenId_
+    ) {
         yieldBox = yieldBox_;
         contractAddress = token;
         tokenId = tokenId_;
@@ -61,6 +64,5 @@ contract ERC721StrategyMock is IStrategy, ERC721Receiver {
     /// Only accept this call from the YieldBox
     function withdraw(address to, uint256 amount) external override {
         IERC721(contractAddress).safeTransferFrom(address(this), to, tokenId);
-
     }
 }
