@@ -25,3 +25,4 @@ workbench/contracts.json
 .certora*
 .last_confs
 certora_*
+gas_report.txt
