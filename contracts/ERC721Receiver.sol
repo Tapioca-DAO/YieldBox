@@ -9,7 +9,7 @@ contract ERC721Receiver is IERC721Receiver {
         address from,
         uint256 tokenId,
         bytes calldata data
-    ) external returns (bytes4){
+    ) external returns (bytes4) {
         return 0x150b7a02; //bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))
     }
 }
