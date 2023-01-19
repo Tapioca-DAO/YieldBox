@@ -58,6 +58,9 @@ contract AssetRegister is ERC1155 {
             // in the mempool
             require((tokenType == TokenType.Native && contractAddress == address(0)) || contractAddress.isContract(), "YieldBox: Not a token");
 
+            // NO_STRATEGY is only allowed for native or ERC721 assets:
+            require(strategy != NO_STRATEGY || tokenType == TokenType.ERC721, "YieldBox: Use a null strategy");
+
             // Effects
             assetId = assets.length;
             assets.push(Asset(tokenType, contractAddress, strategy, tokenId));

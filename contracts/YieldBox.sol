@@ -52,8 +52,6 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
     using BoringERC20 for IWrappedNative;
     using YieldBoxRebase for uint256;
 
-    mapping(uint256 => uint256) public totalAmounts; // Asset => total amount
-
     // ************** //
     // *** EVENTS *** //
     // ************** //
@@ -80,12 +78,8 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
     /// plus the total amount this contract thinks the strategy holds.
     function _tokenBalanceOf(Asset storage asset) internal view returns (uint256 amount) {
         if (asset.strategy == NO_STRATEGY) {
-            if (asset.tokenType == TokenType.ERC20 || asset.tokenType == TokenType.ERC1155) {
-                uint256 assetId = ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId];
-                return totalAmounts[assetId];
-            } else {
-                return IERC721(asset.contractAddress).ownerOf(asset.tokenId) == address(this) ? 1 : 0;
-            }
+            // Only called for ERC721 assets
+            return IERC721(asset.contractAddress).ownerOf(asset.tokenId) == address(this) ? 1 : 0;
         } else {
             return asset.strategy.currentBalance();
         }
@@ -127,26 +121,21 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
 
         _mint(to, assetId, share);
 
-        address destination = asset.strategy == NO_STRATEGY ? address(this) : address(asset.strategy);
-
         // Interactions
         if (asset.tokenType == TokenType.ERC20) {
-            IERC20(asset.contractAddress).safeTransferFrom(from, destination, amount);
+            IERC20(asset.contractAddress).safeTransferFrom(from, address(asset.strategy), amount);
         } else {
             // ERC1155
             // When depositing yieldBox tokens into the yieldBox, things can be simplified
             if (asset.contractAddress == address(this)) {
-                _transferSingle(from, destination, asset.tokenId, amount);
+                _transferSingle(from, address(asset.strategy), asset.tokenId, amount);
             } else {
-                IERC1155(asset.contractAddress).safeTransferFrom(from, destination, asset.tokenId, amount, "");
+                IERC1155(asset.contractAddress).safeTransferFrom(from, address(asset.strategy), asset.tokenId, amount, "");
             }
         }
 
-        if (asset.strategy != NO_STRATEGY) {
-            asset.strategy.deposited(amount);
-        } else {
-            totalAmounts[assetId] += amount;
-        }
+        // There is always a strategy (enforced by asset registry)
+        asset.strategy.deposited(amount);
 
         return (amount, share);
     }
@@ -203,16 +192,10 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
 
         // Interactions
         wrappedNative.deposit{ value: msg.value }();
-        if (asset.strategy != NO_STRATEGY) {
-            // Strategies always receive wrappedNative (supporting both wrapped and raw native tokens adds too much complexity)
-            wrappedNative.safeTransfer(address(asset.strategy), msg.value);
-        }
-
-        if (asset.strategy != NO_STRATEGY) {
-            asset.strategy.deposited(msg.value);
-        } else {
-            totalAmounts[assetId] += msg.value;
-        }
+        // Strategies always receive wrappedNative (supporting both wrapped and raw native tokens adds too much complexity)
+        // There is always a strategy (enforced by AssetRegister)
+        wrappedNative.safeTransfer(address(asset.strategy), msg.value);
+        asset.strategy.deposited(msg.value);
 
         return (msg.value, share);
     }
@@ -248,24 +231,9 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC1155TokenReceiver, 
         _burn(from, assetId, share);
 
         // Interactions
-        if (asset.strategy == NO_STRATEGY) {
-            if (asset.tokenType == TokenType.ERC20) {
-                // Native tokens are always unwrapped when withdrawn
-                if (asset.contractAddress == address(wrappedNative)) {
-                    wrappedNative.withdraw(amount);
-                    to.sendNative(amount);
-                } else {
-                    IERC20(asset.contractAddress).safeTransfer(to, amount);
-                }
-            } else {
-                // IERC1155
-                IERC1155(asset.contractAddress).safeTransferFrom(address(this), to, asset.tokenId, amount, "");
-            }
 
-            totalAmounts[assetId] -= amount;
-        } else {
-            asset.strategy.withdraw(to, amount);
-        }
+        // There is always a strategy (enforced by AssetRegister)
+        asset.strategy.withdraw(to, amount);
 
         return (amount, share);
     }

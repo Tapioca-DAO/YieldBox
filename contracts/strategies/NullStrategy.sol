@@ -5,9 +5,11 @@ pragma experimental ABIEncoderV2;
 import "@boringcrypto/boring-solidity/contracts/interfaces/IERC20.sol";
 import "@boringcrypto/boring-solidity/contracts/interfaces/IERC1155.sol";
 import "@boringcrypto/boring-solidity/contracts/interfaces/IMasterContract.sol";
+import "@boringcrypto/boring-solidity/contracts/libraries/BoringAddress.sol";
 import "@boringcrypto/boring-solidity/contracts/libraries/BoringERC20.sol";
 import "../enums/YieldBoxTokenType.sol";
 import "../BoringMath.sol";
+import "../interfaces/IWrappedNative.sol";
 import "./BaseStrategy.sol";
 
 // solhint-disable const-name-snakecase
@@ -40,6 +42,30 @@ contract NullERC20Strategy is BaseNullStrategy, IMasterContract {
 
     function _withdraw(address to, uint256 amount) internal override {
         IERC20(contractAddress).safeTransfer(to, amount);
+    }
+}
+
+contract NullNativeStrategy is BaseNullStrategy, IMasterContract {
+    using BoringAddress for address;
+    using BoringERC20 for IWrappedNative;
+
+    TokenType public constant tokenType = TokenType.ERC20;
+    uint256 public constant tokenId = 0;
+    address public immutable contractAddress;
+
+    constructor(IYieldBox _yieldBox) BaseStrategy(_yieldBox) {
+        contractAddress = _yieldBox.wrappedNative();
+    }
+
+    function init(bytes calldata data) external payable override {}
+
+    function _currentBalance() internal view override returns (uint256 amount) {
+        return IWrappedNative(contractAddress).safeBalanceOf(address(this));
+    }
+
+    function _withdraw(address to, uint256 amount) internal override {
+        IWrappedNative(contractAddress).withdraw(amount);
+        to.sendNative(amount);
     }
 }
 
