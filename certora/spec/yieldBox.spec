@@ -36,6 +36,7 @@ methods {
     getAssetTokenId(uint256) returns(uint256) envfree
     assetsIdentical(uint256, uint256) returns(bool) envfree
     assetsIdentical1(uint256, (uint8, address, address, uint256)) returns(bool) envfree
+    _tokenBalanceOf(YieldData.Asset) returns(uint256) envfree
 
     dummyWeth.balanceOf(address) returns(uint256) envfree
     // helper functions from the harness
@@ -471,7 +472,7 @@ rule depositETHCorrectness()
 
     uint256 balanceBefore = ethBalanceOfAdress(e, wrappedNative(e));
 
-    amountOut, shareOut = depositETHAsset(e2, assetId, to);
+    amountOut, shareOut = depositETHAsset(e2, assetId, to, e2.msg.value);
 
     uint256 balanceAfter = ethBalanceOfAdress(e, wrappedNative(e));
 
