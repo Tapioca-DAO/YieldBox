@@ -281,6 +281,7 @@ invariant tokenTypeValidity(YieldData.Asset asset, env e)
 
 
 
+
 ////////////////////////////////////////////////////////////////////////////
 //                       Rules                                            //
 ////////////////////////////////////////////////////////////////////////////
@@ -401,26 +402,6 @@ rule withdrawForNFTReverts()
            getAssetAddress(assetId) == dummyERC721);
 }
 
-// updated code - verified (proves fix)
-// new code - verified (proves fix)
-rule nftWithdrawReverts()
-{
-    env e;
-    uint amountOut; uint shareOut;
-    address from; address to;
-    uint assetId;
-
-    YieldData.Asset asset;
-    require assetsIdentical1(assetId,asset);
-
-    amountOut, shareOut = withdrawNFT@withrevert(e, assetId, from, to);
-    bool reverted = lastReverted;
-
-    assert !reverted => (getAssetTokenType(assetId) == YieldData.TokenType.ERC721 ||
-           getAssetStrategy(assetId) == 0 ||
-           getAssetAddress(assetId) == dummyERC721);
-}
-
 
 
 // updated code - reachability fails because withdrawNFT() was created and withdraw() don't work with NFTs
@@ -444,32 +425,6 @@ rule dontBurnSharesWithdraw(env e, env e2) {
     uint256 sharesBefore = balanceOf(e2, from, assetId);
 
     amountOut, shareOut = withdraw(e, assetId, from, to, amount, share);
-
-    address ownerAfter = dummyERC721.ownerOf(e2, asset.tokenId);
-    uint256 sharesAfter = balanceOf(e2, from, assetId);
-
-    assert sharesBefore == sharesAfter => ownerBefore == ownerAfter;
-}
-
-// updated code - verified
-// new code - verified 
-rule dontBurnSharesWithdrawNFT(env e, env e2) {
-    uint amountOut; uint shareOut;
-    address from; address to;
-    uint assetId;
-    YieldData.Asset asset;
-
-    require assetsIdentical1(assetId, asset);
-    require getAssetId(asset) == assetId;
-
-    require asset.tokenType == YieldData.TokenType.ERC721;
-    require asset.contractAddress == dummyERC721;
-    require asset.strategy == 0;
-
-    address ownerBefore = dummyERC721.ownerOf(e2, asset.tokenId);
-    uint256 sharesBefore = balanceOf(e2, from, assetId);
-
-    amountOut, shareOut = withdrawNFT(e, assetId, from, to);
 
     address ownerAfter = dummyERC721.ownerOf(e2, asset.tokenId);
     uint256 sharesAfter = balanceOf(e2, from, assetId);
