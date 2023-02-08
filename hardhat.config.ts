@@ -8,7 +8,7 @@ import "hardhat-deploy"
 import "solidity-coverage"
 import "@boringcrypto/hardhat-framework"
 import { ethers, BigNumber } from "ethers"
-import requestSync from "sync-request"
+// import requestSync from "sync-request"
 import "hardhat-tracer"
 
 if (process.env.DOTENV_PATH) {
@@ -33,14 +33,15 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 
-const last_block =
-    process.env.ALCHEMY_API_KEY && false
-        ? BigNumber.from(
-              JSON.parse(
-                  requestSync("GET", "https://api.etherscan.io/api?module=proxy&action=eth_blockNumber&apikey=YourApiKeyToken").body as string
-              ).result
-          )
-        : BigNumber.from(14333352)
+const last_block = BigNumber.from(14333352)
+// process.env.ALCHEMY_API_KEY && false
+//     ? BigNumber.from(
+//           JSON.parse(
+//               requestSync("GET", `https://api.etherscan.io/api?module=proxy&action=eth_blockNumber&apikey=${process.env.ETHERSCAN_API_KEY}`)
+//                   .body as string
+//           ).result
+//       )
+//     : BigNumber.from(14333352)
 
 console.log(
     process.env.ALCHEMY_API_KEY
