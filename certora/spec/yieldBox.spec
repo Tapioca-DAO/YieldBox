@@ -36,7 +36,7 @@ methods {
     getAssetTokenId(uint256) returns(uint256) envfree
     assetsIdentical(uint256, uint256) returns(bool) envfree
     assetsIdentical1(uint256, (uint8, address, address, uint256)) returns(bool) envfree
-    _tokenBalanceOf(YieldData.Asset) returns(uint256) envfree
+    _tokenBalanceOf(YieldData.Asset) returns(uint256)
 
     dummyWeth.balanceOf(address) returns(uint256) envfree
     // helper functions from the harness
