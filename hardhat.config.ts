@@ -37,7 +37,8 @@ const last_block =
     process.env.ALCHEMY_API_KEY && false
         ? BigNumber.from(
               JSON.parse(
-                  requestSync("GET", "https://api.etherscan.io/api?module=proxy&action=eth_blockNumber&apikey=YourApiKeyToken").body as string
+                  requestSync("GET", `https://api.etherscan.io/api?module=proxy&action=eth_blockNumber&apikey=${process.env.ETHERSCAN_API_KEY}`)
+                      .body as string
               ).result
           )
         : BigNumber.from(14333352)

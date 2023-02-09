@@ -36,6 +36,7 @@ methods {
     getAssetTokenId(uint256) returns(uint256) envfree
     assetsIdentical(uint256, uint256) returns(bool) envfree
     assetsIdentical1(uint256, (uint8, address, address, uint256)) returns(bool) envfree
+    _tokenBalanceOf(YieldData.Asset) returns(uint256)
 
     dummyWeth.balanceOf(address) returns(uint256) envfree
     // helper functions from the harness
@@ -256,12 +257,6 @@ invariant erc20HasTokenIdZero(YieldData.Asset asset, env e)
 invariant balanceOfAddressZeroERC20(env e)
     dummyERC20.balanceOf(e, 0) == 0 
 
-    filtered { f -> excludeMethods(f) }
-    {
-        preserved withdrawNFT(uint256 assetId, address from, address to) with (env e2){
-            require restrictAssetId(e2, assetId);
-        }
-    }
 
 
 /// @title balanceOfAddressZeroYieldBox
@@ -285,138 +280,6 @@ invariant tokenTypeValidity(YieldData.Asset asset, env e)
         }
     }
 
-
-
-// STATUS - verified  
-// solvency regarding ratio between shares and amount of tokens
-// total shares / 1e8 <= total amount of token (simplified to 2:1 ratio because of difficult math operations)
-// withdrawNFT and depositNFT are filtered out becuase they are assume 1:1 correlation
-invariant sharesToTokensRatio(YieldData.Asset asset, uint256 assetId, env e)
-    assetId > 0 => (totalSupply(e, assetId) <= _tokenBalanceOf(e, asset) * 2)
-    // assetId > 0 => totalSupply(e, assetId) <= _tokenBalanceOf(e, asset) * 10^8
-        filtered {f -> excludeMethods(f) 
-                        && f.selector != withdrawNFT(uint256, address, address).selector 
-                        && f.selector != depositNFT(address, address, uint256, address, address).selector
-                        && f.selector != depositNFTAsset(uint256, address, address).selector}
-    {
-        preserved with (env e2){
-            require assetsIdentical1(assetId, asset);
-            require getAssetId(asset) == assetId;
-            require getAssetsLength() < 1000000;
-
-            require owner(e2, assetId) != e2.msg.sender; // mint - owner can break it
-
-            require restrictAsset(e, asset, assetId);
-        }
-        preserved depositAsset(uint256 assetId1, address from, address to, uint256 amount, uint256 share) with (env e3) {
-            require assetsIdentical1(assetId, asset);
-            require getAssetId(asset) == assetId;
-            require getAssetsLength() < 1000000;
-
-            require assetId1 != assetId => getAssetAddress(assetId1) != getAssetAddress(assetId) || getAssetTokenId(assetId1) != getAssetTokenId(assetId);
-
-            require from != YieldData;
-            require from != Strategy;   //  it can only be changed by malisious strategy
-            require from != StrategyAdd;
-
-            require restrictAsset(e3, asset, assetId);
-        }
-        preserved deposit(uint8 tokenType, address contractAddress, address strategy, uint256 tokenId, address from, address to, uint256 amount, uint256 share) with (env e4) {
-            require assetsIdentical1(assetId, asset);
-            require getAssetId(asset) == assetId;
-            require getAssetsLength() < 1000000;
-
-            require from != YieldData;
-
-            require from != Strategy;
-            require from != StrategyAdd;
-
-            require restrictAsset(e4, asset, assetId);
-            
-        }
-        preserved withdraw(uint256 assetId1, address from, address to, uint256 amount, uint256 share) with (env e5) {
-            require assetsIdentical1(assetId, asset);
-            require getAssetId(asset) == assetId;
-            require getAssetsLength() < 1000000;
-
-            require !assetsIdentical(assetId, assetId1) => getAssetStrategy(assetId) != getAssetStrategy(assetId1);
-
-            require assetId1 != assetId => getAssetAddress(assetId1) != getAssetAddress(assetId) || getAssetTokenId(assetId1) != getAssetTokenId(assetId);   
-
-            require restrictAsset(e5, asset, assetId);
-        }
-        preserved depositETH(address strategy, address to) with (env e7){
-            require assetsIdentical1(assetId, asset);
-            require getAssetId(asset) == assetId;
-            require getAssetsLength() < 1000000;
-            require restrictAsset(e, asset, assetId);
-        }
-        preserved depositETHAsset(uint256 assetId1, address to) with (env e8){
-            require assetsIdentical1(assetId, asset);
-            require getAssetId(asset) == assetId;
-            require getAssetsLength() < 1000000;
-            require restrictAsset(e, asset, assetId);
-        }
-    }
-
-
-// STATUS - verified  
-// solvency regarding ratio between shares and amount of tokens for NFT
-invariant sharesToTokensRatioNFT(YieldData.Asset asset, uint256 assetId, env e)
-    totalSupply(e, assetId) <= _tokenBalanceOf(e, asset)
-        filtered {f -> f.selector == withdrawNFT(uint256, address, address).selector 
-                        || f.selector == depositNFT(address, address, uint256, address, address).selector
-                        || f.selector == depositNFTAsset(uint256, address, address).selector}
-    {
-        preserved withdrawNFT(uint256 assetId1, address from, address to) with (env e3) {
-            require assetsIdentical1(assetId, asset);
-            require getAssetId(asset) == assetId;
-            require getAssetsLength() < 1000000;
-
-            require restrictAssetNFT(e, asset, assetId);
-
-            require (assetId1 != assetId && getAssetStrategy(assetId) == 0 && getAssetStrategy(assetId1) == 0)
-                        => (getAssetAddress(assetId1) != getAssetAddress(assetId) 
-                                || getAssetTokenId(assetId1) != getAssetTokenId(assetId));
-            
-            require (assetId1 != assetId && getAssetStrategy(assetId1) != 0)
-                        => (getAssetStrategy(assetId1) == StrategyAdd 
-                                && getAssetAddress(assetId1) == StrategyAdd.contractAddress(e)
-                                && getAssetTokenType(assetId1) == StrategyAdd.tokenType(e)
-                                && StrategyAdd.tokenType(e) == YieldData.TokenType.ERC721
-                                && StrategyAdd.contractAddress(e) == ERC721AddStr);
-        }
-        preserved depositNFT(address contractAddress, address strategy, uint256 tokenId, address from, address to) with (env e4) {
-            require assetsIdentical1(assetId, asset);
-            require getAssetId(asset) == assetId;
-            require getAssetsLength() < 1000000;
-
-            require restrictAssetNFT(e, asset, assetId);
-
-            require (ids(e4, YieldData.TokenType.ERC721, contractAddress, strategy, tokenId) < getAssetsLength() 
-                                    && assetId != ids(e4, YieldData.TokenType.ERC721, contractAddress, strategy, tokenId))
-                            => getAssetAddress(ids(e4, YieldData.TokenType.ERC721, contractAddress, strategy, tokenId)) != getAssetAddress(assetId) 
-                                    || getAssetTokenId(ids(e4, YieldData.TokenType.ERC721, contractAddress, strategy, tokenId)) != getAssetTokenId(assetId);
-                
-            require ids(e4, YieldData.TokenType.ERC721, contractAddress, strategy, tokenId) < getAssetsLength() 
-                        => restrictAssetId(e4, ids(e, YieldData.TokenType.ERC721, contractAddress, strategy, tokenId));
-
-            require from != currentContract;
-            require from != Strategy;           
-            require from != StrategyAdd;
-        }
-        preserved depositNFTAsset(uint256 assetId1, address from, address to) with (env e5) {
-            require assetsIdentical1(assetId, asset);
-            require getAssetId(asset) == assetId;
-            require getAssetsLength() < 1000000;
-
-            require restrictAssetNFT(e, asset, assetId);
-
-            require from != currentContract;
-            require from != Strategy;           
-            require from != StrategyAdd;
-        }
-    }
 
 
 
@@ -540,26 +403,6 @@ rule withdrawForNFTReverts()
            getAssetAddress(assetId) == dummyERC721);
 }
 
-// updated code - verified (proves fix)
-// new code - verified (proves fix)
-rule nftWithdrawReverts()
-{
-    env e;
-    uint amountOut; uint shareOut;
-    address from; address to;
-    uint assetId;
-
-    YieldData.Asset asset;
-    require assetsIdentical1(assetId,asset);
-
-    amountOut, shareOut = withdrawNFT@withrevert(e, assetId, from, to);
-    bool reverted = lastReverted;
-
-    assert !reverted => (getAssetTokenType(assetId) == YieldData.TokenType.ERC721 ||
-           getAssetStrategy(assetId) == 0 ||
-           getAssetAddress(assetId) == dummyERC721);
-}
-
 
 
 // updated code - reachability fails because withdrawNFT() was created and withdraw() don't work with NFTs
@@ -583,32 +426,6 @@ rule dontBurnSharesWithdraw(env e, env e2) {
     uint256 sharesBefore = balanceOf(e2, from, assetId);
 
     amountOut, shareOut = withdraw(e, assetId, from, to, amount, share);
-
-    address ownerAfter = dummyERC721.ownerOf(e2, asset.tokenId);
-    uint256 sharesAfter = balanceOf(e2, from, assetId);
-
-    assert sharesBefore == sharesAfter => ownerBefore == ownerAfter;
-}
-
-// updated code - verified
-// new code - verified 
-rule dontBurnSharesWithdrawNFT(env e, env e2) {
-    uint amountOut; uint shareOut;
-    address from; address to;
-    uint assetId;
-    YieldData.Asset asset;
-
-    require assetsIdentical1(assetId, asset);
-    require getAssetId(asset) == assetId;
-
-    require asset.tokenType == YieldData.TokenType.ERC721;
-    require asset.contractAddress == dummyERC721;
-    require asset.strategy == 0;
-
-    address ownerBefore = dummyERC721.ownerOf(e2, asset.tokenId);
-    uint256 sharesBefore = balanceOf(e2, from, assetId);
-
-    amountOut, shareOut = withdrawNFT(e, assetId, from, to);
 
     address ownerAfter = dummyERC721.ownerOf(e2, asset.tokenId);
     uint256 sharesAfter = balanceOf(e2, from, assetId);
@@ -655,7 +472,7 @@ rule depositETHCorrectness()
 
     uint256 balanceBefore = ethBalanceOfAdress(e, wrappedNative(e));
 
-    amountOut, shareOut = depositETHAsset(e2, assetId, to);
+    amountOut, shareOut = depositETHAsset(e2, assetId, to, e2.msg.value);
 
     uint256 balanceAfter = ethBalanceOfAdress(e, wrappedNative(e));
 
