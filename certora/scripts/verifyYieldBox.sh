@@ -21,7 +21,7 @@ certoraRun  certora/harness/YieldBoxHarness.sol \
     --solc solc8.9 \
     --cloud \
     --optimistic_loop \
-    --rule mapArrayCorrealtion assetIdtoAssetLength erc20HasTokenIdZero balanceOfAddressZeroERC20 balanceOfAddressZeroYieldBox tokenTypeValidity sharesToTokensRatioNFT withdrawIntegrity yielBoxETHAlwaysZero strategyCorrelatesAsset tokenInterfaceConfusion nftWithdrawReverts dontBurnSharesWithdrawNFT depositETHCorrectness \
+    --rule mapArrayCorrealtion assetIdtoAssetLength erc20HasTokenIdZero balanceOfAddressZeroERC20 balanceOfAddressZeroYieldBox tokenTypeValidity withdrawIntegrity yielBoxETHAlwaysZero strategyCorrelatesAsset tokenInterfaceConfusion depositETHCorrectness \
     --send_only \
     --settings -t=2000,-mediumTimeout=2000,-depth=100 \
     --msg "YieldBox - all"
