@@ -82,7 +82,7 @@ contract YieldBoxHarness is YieldBox {
         return share._toAmount(totalShares_, totalAmount, roundUp);
     }
 
-    function getAssetBalance(Asset asset) public returns (uint256) {
+    function getAssetBalance(Asset memory asset) public returns (uint256) {
         return asset.strategy.currentBalance();
     }
 }
