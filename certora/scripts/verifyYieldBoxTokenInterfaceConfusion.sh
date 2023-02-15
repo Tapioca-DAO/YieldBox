@@ -1,6 +1,6 @@
 cd certora
-touch applyHarnessSimple.patch
-make -f Makefilesimple munged
+touch applyHarness.patch
+make munged
 cd ..
 echo "key length" ${#CERTORAKEY}
 
@@ -22,6 +22,6 @@ certoraRun  certora/harness/YieldBoxHarness.sol \
     --cloud \
     --optimistic_loop \
     --send_only \
-    --rule sharesToTokensRatio \
+    --rule tokenInterfaceConfusion \
     --settings -t=2000,-mediumTimeout=2000,-depth=100 \
-    --msg "YieldBox - sharesToTokensRatio with simplified token/shares ratio"
+    --msg "YieldBox - tokenInterfaceConfusion check"

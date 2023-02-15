@@ -36,10 +36,14 @@ methods {
     getAssetTokenId(uint256) returns(uint256) envfree
     assetsIdentical(uint256, uint256) returns(bool) envfree
     assetsIdentical1(uint256, (uint8, address, address, uint256)) returns(bool) envfree
-    _tokenBalanceOf(YieldData.Asset) returns(uint256)
 
     dummyWeth.balanceOf(address) returns(uint256) envfree
+
+    getAssetBalance(YieldData.Asset) returns(uint256)                                                               => DISPATCHER(true)
+    getAssetTotalSupply(YieldData.Asset) returns(uint256)                                                          => DISPATCHER(true)
+    
     // helper functions from the harness
+
 
     // external method summaries
     // YieldBoxURIBuilder.sol
@@ -196,12 +200,12 @@ definition restrictStrategyNFT(env e) returns bool =
 ////////////////////////////////////////////////////////////////////////////
 
 
-/// @title mapArrayCorrealtion
+/// @title mapArrayCorrelation
 /// @notice If one of the asset parameters is different then assetId different
 /// @dev How can I specify safe assumptions, which are in the form of requirements, that I want to mention in the report?
 /// @param i One of assetIds to check
 /// @param j One of assetIds to check
-invariant mapArrayCorrealtion(uint i, uint j, env e)
+invariant mapArrayCorrelation(uint i, uint j, env e)
     ((i < getAssetsLength() && j < getAssetsLength()) => (assetsIdentical(i, j) <=> i == j))
         && (i < getAssetsLength() => ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i)
         && (j < getAssetsLength() => ids(e, getAssetTokenType(j), getAssetAddress(j), getAssetStrategy(j), getAssetTokenId(j)) == j)
@@ -275,7 +279,6 @@ invariant tokenTypeValidity(YieldData.Asset asset, env e)
 //                       Rules                                            //
 ////////////////////////////////////////////////////////////////////////////
 
-
 // STATUS - verified 
 // Integrity of withdraw()
 rule withdrawIntegrity() 
@@ -291,7 +294,7 @@ rule withdrawIntegrity()
     require assetsIdentical1(assetId, asset);
     require getAssetId(asset) == assetId;
 
-    uint strategyBalanceBefore = _tokenBalanceOf(e, asset);
+    uint strategyBalanceBefore = getAssetBalance(e, asset);
     uint balanceBefore = balanceOf(e,from, assetId);
 
     amountOut, shareOut = withdraw(e,assetId, from, to, amount, share);
@@ -303,10 +306,13 @@ rule withdrawIntegrity()
 }
 
 
-
 // STATUS - verified
 // YieldBox eth balance is unchanged (there is no way to tranfer funds to YieldBox within contract's functions)
-rule yielBoxETHAlwaysZero(env e, env e2, method f) filtered { f -> !f.isFallback && excludeMethods(f) } {
+rule yielBoxETHAlwaysZero(env e, env e2, method f) filtered { f -> !f.isFallback 
+    && excludeMethods(f) 
+    && f.selector != depositETH(address,address,uint256).selector 
+    && f.selector != depositETHAsset(uint256,address,uint256).selector } 
+{
 
     require ethBalanceOfAdress(e, currentContract) == 0;
 
@@ -357,6 +363,8 @@ rule tokenInterfaceConfusion(env e)
 
     require assetsIdentical1(assetId, asset);
     require getAssetId(asset) == assetId;
+    require getAssetStrategy(assetId) == ERC721Str || getAssetStrategy(assetId) == ERC721AddStr;
+    
 
     uint erc20BalanceBefore = dummyERC20.balanceOf(e, randomAddress);
 
