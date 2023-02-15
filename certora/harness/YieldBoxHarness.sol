@@ -85,4 +85,8 @@ contract YieldBoxHarness is YieldBox {
     function getAssetBalance(Asset memory asset) public returns (uint256) {
         return asset.strategy.currentBalance();
     }
+
+    function getAssetTotalBalance(Asset memory asset) public returns (uint256) {
+        return IERC20(asset.contractAddress).balanceOf(address(this));
+    }
 }
