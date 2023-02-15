@@ -427,7 +427,7 @@ rule tokenInterfaceConfusion(env e)
 
     require assetsIdentical1(assetId, asset);
     require getAssetId(asset) == assetId;
-    require getAssetStrategy(assetId) == ERC721Str || getAssetStrategy(assetId) == ERC721AddStr 
+    require getAssetStrategy(assetId) == ERC721Str || getAssetStrategy(assetId) == ERC721AddStr;
     
 
     uint erc20BalanceBefore = dummyERC20.balanceOf(e, randomAddress);

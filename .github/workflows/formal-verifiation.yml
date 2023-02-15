@@ -1,61 +1,62 @@
 name: certora-formal_verification
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - certora
-      - master
+    push:
+        branches:
+            - master
+    pull_request:
+        branches:
+            - certora
+            - master
 
-  workflow_dispatch:
+    workflow_dispatch:
 
 jobs:
-  verify:
-    runs-on: ubuntu-latest
+    verify:
+        runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - run: yarn install
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/setup-node@v3
+              with:
+                  node-version: 16
+            - run: yarn install
 
-      - name: Check key
-        env:
-          CERTORAKEY: ${{ secrets.CERTORAKEY }}
-        run: echo "key length" ${#CERTORAKEY}
+            - name: Check key
+              env:
+                  CERTORAKEY: ${{ secrets.CERTORAKEY }}
+              run: echo "key length" ${#CERTORAKEY}
 
-      - name: Install python
-        uses: actions/setup-python@v2
-        with: { python-version: 3.9 }
+            - name: Install python
+              uses: actions/setup-python@v2
+              with: { python-version: 3.9 }
 
-      - name: Install java
-        uses: actions/setup-java@v1
-        with: { java-version: "11", java-package: jre }
+            - name: Install java
+              uses: actions/setup-java@v1
+              with: { java-version: "11", java-package: jre }
 
-      - name: Install certora cli
-        run: pip install certora-cli
-        
-      - name: Install solc
-        run: |
-          wget https://github.com/ethereum/solidity/releases/download/v0.8.9/solc-static-linux
-          chmod +x solc-static-linux
-          sudo mv solc-static-linux /usr/local/bin/solc8.9
-      
-      - name: Verify rule ${{ matrix.rule }}
-        run: |	          
-          sh certora/scripts/${{ matrix.rule }}
-          
-        env:
-          CERTORAKEY: ${{ secrets.CERTORAKEY }}
-          
-    strategy:
-      fail-fast: false
-      max-parallel: 16
-      matrix:
-        rule:
-          - verifyYieldBox.sh
-          - verifyYieldBoxNoReminder.sh
-          - verifyYieldBoxSimplified.sh
+            - name: Install certora cli
+              run: pip install certora-cli
+
+            - name: Install solc
+              run: |
+                  wget https://github.com/ethereum/solidity/releases/download/v0.8.9/solc-static-linux
+                  chmod +x solc-static-linux
+                  sudo mv solc-static-linux /usr/local/bin/solc8.9
+
+            - name: Verify rule ${{ matrix.rule }}
+              run: |
+                  sh certora/scripts/${{ matrix.rule }}
+
+              env:
+                  CERTORAKEY: ${{ secrets.CERTORAKEY }}
+
+        strategy:
+            fail-fast: false
+            max-parallel: 16
+            matrix:
+                rule:
+                    - verifyYieldBox.sh
+                    - verifyYieldBoxNoReminder.sh
+                    - verifyYieldBoxSimplified.sh
+                    - verifyYieldBoxTokenInterfaceConfusion.sh
