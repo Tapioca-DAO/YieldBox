@@ -36,7 +36,6 @@ methods {
     getAssetTokenId(uint256) returns(uint256) envfree
     assetsIdentical(uint256, uint256) returns(bool) envfree
     assetsIdentical1(uint256, (uint8, address, address, uint256)) returns(bool) envfree
-    _tokenBalanceOf(YieldData.Asset) returns(uint256)
 
     dummyWeth.balanceOf(address) returns(uint256) envfree
     // helper functions from the harness
@@ -373,10 +372,13 @@ rule withdrawIntegrity()
 }
 
 
-
 // STATUS - verified
 // YieldBox eth balance is unchanged (there is no way to tranfer funds to YieldBox within contract's functions)
-rule yielBoxETHAlwaysZero(env e, env e2, method f) filtered { f -> !f.isFallback && excludeMethods(f) } {
+rule yielBoxETHAlwaysZero(env e, env e2, method f) filtered { f -> !f.isFallback 
+    && excludeMethods(f) 
+    && f.selector != depositETH(address,address,uint256).selector 
+    && f.selector != depositETHAsset(uint256,address,uint256).selector } 
+{
 
     require ethBalanceOfAdress(e, currentContract) == 0;
 

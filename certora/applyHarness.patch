@@ -40,9 +40,7 @@ diff -ruN YieldBox.sol YieldBox.sol
      /// plus the total amount this contract thinks the strategy holds.
 -    function _tokenBalanceOf(Asset storage asset) internal view returns (uint256 amount) {
 +    function _tokenBalanceOf(Asset memory asset) public view returns (uint256 amount) {      // HARNESS: internal -> public; storage -> memory
-         if (asset.strategy == NO_STRATEGY) {
-             if (asset.tokenType == TokenType.ERC20 || asset.tokenType == TokenType.ERC1155) {
-                 uint256 assetId = ids[asset.tokenType][asset.contractAddress][asset.strategy][asset.tokenId];
+         return asset.strategy.currentBalance();
 diff -ruN YieldBoxRebase.sol YieldBoxRebase.sol
 --- YieldBoxRebase.sol	2022-12-27 00:39:19
 +++ YieldBoxRebase.sol	2023-01-03 16:01:08
