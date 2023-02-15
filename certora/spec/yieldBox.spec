@@ -40,7 +40,6 @@ methods {
     dummyWeth.balanceOf(address) returns(uint256) envfree
 
     getAssetBalance(YieldData.Asset) returns(uint256)                                                               => DISPATCHER(true)
-    getAssetTotalBalance(YieldData.Asset) returns(uint256)                                                          => DISPATCHER(true)
     getAssetTotalSupply(YieldData.Asset) returns(uint256)                                                          => DISPATCHER(true)
     
     // helper functions from the harness
@@ -285,7 +284,7 @@ invariant tokenTypeValidity(YieldData.Asset asset, env e)
 // total shares / 1e8 <= total amount of token (simplified to 2:1 ratio because of difficult math operations)
 // withdrawNFT and depositNFT are filtered out becuase they are assume 1:1 correlation
 invariant sharesToTokensRatio(YieldData.Asset asset, uint256 assetId, env e)
-    assetId > 0 => (getAssetTotalSupply(e,asset) <= getAssetTotalBalance(e, asset) * 2)
+    assetId > 0 => (getAssetTotalSupply(e,asset) <= getAssetBalance(e, asset) * 2)
     // assetId > 0 => totalSupply(e, assetId) <= getAssetTotalBalance(e, asset) * 10^8
         filtered {f -> excludeMethods(f) 
                         && f.selector != depositNFTAsset(uint256, address, address).selector}

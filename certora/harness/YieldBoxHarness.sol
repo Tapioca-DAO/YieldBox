@@ -88,13 +88,6 @@ contract YieldBoxHarness is YieldBox {
 
     function getAssetTotalSupply(Asset memory asset) public returns (uint256) {
         uint256 id = getAssetId(asset);
-        (uint256 totalShare, ) = assetTotals(id);
-        return totalShare;
-    }
-
-    function getAssetTotalBalance(Asset memory asset) public returns (uint256) {
-        uint256 id = getAssetId(asset);
-        (, uint256 totalAmount) = assetTotals(id);
-        return totalAmount;
+        return totalSupply[id];
     }
 }
