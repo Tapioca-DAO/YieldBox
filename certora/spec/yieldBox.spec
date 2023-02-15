@@ -38,7 +38,11 @@ methods {
     assetsIdentical1(uint256, (uint8, address, address, uint256)) returns(bool) envfree
 
     dummyWeth.balanceOf(address) returns(uint256) envfree
+
+    getAssetBalance(YieldData.Asset) returns(uint256)                                                               => DISPATCHER(true)
+    
     // helper functions from the harness
+
 
     // external method summaries
     // YieldBoxURIBuilder.sol
@@ -279,8 +283,8 @@ invariant tokenTypeValidity(YieldData.Asset asset, env e)
 // total shares / 1e8 <= total amount of token (simplified to 2:1 ratio because of difficult math operations)
 // withdrawNFT and depositNFT are filtered out becuase they are assume 1:1 correlation
 invariant sharesToTokensRatio(YieldData.Asset asset, uint256 assetId, env e)
-    assetId > 0 => (totalSupply(e, assetId) <= _tokenBalanceOf(e, asset) * 2)
-    // assetId > 0 => totalSupply(e, assetId) <= _tokenBalanceOf(e, asset) * 10^8
+    assetId > 0 => (totalSupply(e, assetId) <= getAssetBalance(e, asset) * 2)
+    // assetId > 0 => totalSupply(e, assetId) <= getAssetBalance(e, asset) * 10^8
         filtered {f -> excludeMethods(f) 
                         && f.selector != depositNFTAsset(uint256, address, address).selector}
     {
@@ -360,7 +364,7 @@ rule withdrawIntegrity()
     require assetsIdentical1(assetId, asset);
     require getAssetId(asset) == assetId;
 
-    uint strategyBalanceBefore = _tokenBalanceOf(e, asset);
+    uint strategyBalanceBefore = getAssetBalance(e, asset);
     uint balanceBefore = balanceOf(e,from, assetId);
 
     amountOut, shareOut = withdraw(e,assetId, from, to, amount, share);
