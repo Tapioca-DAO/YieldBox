@@ -60,3 +60,4 @@ jobs:
                     - verifyYieldBoxNoReminder.sh
                     - verifyYieldBoxSimplified.sh
                     - verifyYieldBoxTokenInterfaceConfusion.sh
+                    - verifyYieldBoxMapArrayCorrelation.sh

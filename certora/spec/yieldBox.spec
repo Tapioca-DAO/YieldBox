@@ -196,12 +196,12 @@ definition restrictStrategyNFT(env e) returns bool =
 ////////////////////////////////////////////////////////////////////////////
 
 
-/// @title mapArrayCorrealtion
+/// @title mapArrayCorrelation
 /// @notice If one of the asset parameters is different then assetId different
 /// @dev How can I specify safe assumptions, which are in the form of requirements, that I want to mention in the report?
 /// @param i One of assetIds to check
 /// @param j One of assetIds to check
-invariant mapArrayCorrealtion(uint i, uint j, env e)
+invariant mapArrayCorrelation(uint i, uint j, env e)
     ((i < getAssetsLength() && j < getAssetsLength()) => (assetsIdentical(i, j) <=> i == j))
         && (i < getAssetsLength() => ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i)
         && (j < getAssetsLength() => ids(e, getAssetTokenType(j), getAssetAddress(j), getAssetStrategy(j), getAssetTokenId(j)) == j)
