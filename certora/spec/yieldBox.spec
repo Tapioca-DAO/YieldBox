@@ -45,7 +45,7 @@ methods {
     // YieldBoxURIBuilder.sol
     name((uint8, address, address, uint256), string) returns(string)                                                => DISPATCHER(true)
     symbol((uint8, address, address, uint256), string) returns(string)                                              => DISPATCHER(true)
-    // uri((uint8, address, address, uint256), (string, string, uint8, string), uint256, address) returns(string)      => DISPATCHER(true)
+    // uri((uint8, address, address, uint256), (string, string, uint8, string), uint256, address) returns(string)   => DISPATCHER(true)
     decimals((uint8, address, address, uint256), uint8) returns(uint8)                                              => DISPATCHER(true)
 
     // MasterContractHarness.sol
@@ -96,28 +96,23 @@ definition excludeMethods(method f) returns bool =
 
 definition restrictAsset(env e, YieldData.Asset asset, uint256 assetId) returns bool =
         // erc20
-        asset.strategy == 0
-            && asset.tokenType == YieldData.TokenType.ERC20
+        asset.tokenType == YieldData.TokenType.ERC20
             && asset.contractAddress == dummyERC20
             && asset.tokenId == 0
         // wrappedNative
-        || asset.strategy == 0
-            && asset.tokenType == YieldData.TokenType.ERC20
+        || asset.tokenType == YieldData.TokenType.ERC20
             && asset.contractAddress == wrappedNative(e)
             && asset.tokenId == 0
         // nativeToken - no strat by definition
-        || asset.strategy == 0
-            && asset.tokenType == YieldData.TokenType.Native
+        || asset.tokenType == YieldData.TokenType.Native
             && asset.contractAddress == 0
             && asset.tokenId == assetId
         // erc721
-        || asset.strategy == 0
-            && asset.tokenType == YieldData.TokenType.ERC721
+        || asset.tokenType == YieldData.TokenType.ERC721
             && asset.contractAddress == dummyERC721
             // && asset.tokenId == 0
         // erc1155
-        || asset.strategy == 0
-            && asset.tokenType == YieldData.TokenType.ERC1155
+        || asset.tokenType == YieldData.TokenType.ERC1155
             && asset.contractAddress == dummyERC1155
             // && asset.tokenId == 0
         //strategy
@@ -130,13 +125,11 @@ definition restrictAsset(env e, YieldData.Asset asset, uint256 assetId) returns 
 
 definition restrictAssetId(env e, uint256 assetId) returns bool =
         // erc20
-        getAssetStrategy(assetId) == 0
-            && getAssetTokenType(assetId) == YieldData.TokenType.ERC20
+       getAssetTokenType(assetId) == YieldData.TokenType.ERC20
             && getAssetAddress(assetId) == dummyERC20
             && getAssetTokenId(assetId) == 0
         // wrappedNative
-        || getAssetStrategy(assetId) == 0
-            && getAssetTokenType(assetId) == YieldData.TokenType.ERC20
+        || getAssetTokenType(assetId) == YieldData.TokenType.ERC20
             && getAssetAddress(assetId) == wrappedNative(e)
             && getAssetTokenId(assetId) == 0
         // nativeToken - no strat by definition
@@ -145,13 +138,11 @@ definition restrictAssetId(env e, uint256 assetId) returns bool =
             && getAssetAddress(assetId) == 0
             && getAssetTokenId(assetId) == assetId
         // erc721
-        || getAssetStrategy(assetId) == 0
-            && getAssetTokenType(assetId) == YieldData.TokenType.ERC721
+        || getAssetTokenType(assetId) == YieldData.TokenType.ERC721
             && getAssetAddress(assetId) == dummyERC721
             // && getAssetTokenId(assetId) == 0
         // erc1155
-        || getAssetStrategy(assetId) == 0
-            && getAssetTokenType(assetId) == YieldData.TokenType.ERC1155
+        || getAssetTokenType(assetId) == YieldData.TokenType.ERC1155
             && getAssetAddress(assetId) == dummyERC1155
             // && getAssetTokenId(assetId) == 0
         //strategy
@@ -164,8 +155,7 @@ definition restrictAssetId(env e, uint256 assetId) returns bool =
 
 definition restrictAssetNFT(env e, YieldData.Asset asset, uint256 assetId) returns bool =
         // erc721
-        asset.strategy == 0
-            && asset.tokenType == YieldData.TokenType.ERC721
+        asset.tokenType == YieldData.TokenType.ERC721
             && asset.contractAddress == dummyERC721
         //strategy
         || asset.strategy == Strategy
