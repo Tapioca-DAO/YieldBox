@@ -21,7 +21,7 @@ certoraRun  certora/harness/YieldBoxHarness.sol \
     --solc solc8.9 \
     --cloud \
     --optimistic_loop \
-    --rule mapArrayCorrealtion assetIdtoAssetLength erc20HasTokenIdZero balanceOfAddressZeroERC20 balanceOfAddressZeroYieldBox tokenTypeValidity withdrawIntegrity yielBoxETHAlwaysZero strategyCorrelatesAsset depositETHCorrectness \
     --send_only \
+    --rule tokenInterfaceConfusion \
     --settings -t=2000,-mediumTimeout=2000,-depth=100 \
-    --msg "YieldBox - all"
+    --msg "YieldBox - tokenInterfaceConfusion check"

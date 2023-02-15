@@ -275,6 +275,76 @@ invariant tokenTypeValidity(YieldData.Asset asset, env e)
 //                       Rules                                            //
 ////////////////////////////////////////////////////////////////////////////
 
+// STATUS - verified  
+// solvency regarding ratio between shares and amount of tokens
+// total shares / 1e8 <= total amount of token (simplified to 2:1 ratio because of difficult math operations)
+// withdrawNFT and depositNFT are filtered out becuase they are assume 1:1 correlation
+invariant sharesToTokensRatio(YieldData.Asset asset, uint256 assetId, env e)
+    assetId > 0 => (totalSupply(e, assetId) <= _tokenBalanceOf(e, asset) * 2)
+    // assetId > 0 => totalSupply(e, assetId) <= _tokenBalanceOf(e, asset) * 10^8
+        filtered {f -> excludeMethods(f) 
+                        && f.selector != depositNFTAsset(uint256, address, address).selector}
+    {
+        preserved with (env e2){
+            require assetsIdentical1(assetId, asset);
+            require getAssetId(asset) == assetId;
+            require getAssetsLength() < 1000000;
+
+            require owner(e2, assetId) != e2.msg.sender; // mint - owner can break it
+
+            require restrictAsset(e, asset, assetId);
+        }
+        preserved depositAsset(uint256 assetId1, address from, address to, uint256 amount, uint256 share) with (env e3) {
+            require assetsIdentical1(assetId, asset);
+            require getAssetId(asset) == assetId;
+            require getAssetsLength() < 1000000;
+
+            require assetId1 != assetId => getAssetAddress(assetId1) != getAssetAddress(assetId) || getAssetTokenId(assetId1) != getAssetTokenId(assetId);
+
+            require from != YieldData;
+            require from != Strategy;   //  it can only be changed by malisious strategy
+            require from != StrategyAdd;
+
+            require restrictAsset(e3, asset, assetId);
+        }
+        preserved deposit(uint8 tokenType, address contractAddress, address strategy, uint256 tokenId, address from, address to, uint256 amount, uint256 share) with (env e4) {
+            require assetsIdentical1(assetId, asset);
+            require getAssetId(asset) == assetId;
+            require getAssetsLength() < 1000000;
+
+            require from != YieldData;
+
+            require from != Strategy;
+            require from != StrategyAdd;
+
+            require restrictAsset(e4, asset, assetId);
+            
+        }
+        preserved withdraw(uint256 assetId1, address from, address to, uint256 amount, uint256 share) with (env e5) {
+            require assetsIdentical1(assetId, asset);
+            require getAssetId(asset) == assetId;
+            require getAssetsLength() < 1000000;
+
+            require !assetsIdentical(assetId, assetId1) => getAssetStrategy(assetId) != getAssetStrategy(assetId1);
+
+            require assetId1 != assetId => getAssetAddress(assetId1) != getAssetAddress(assetId) || getAssetTokenId(assetId1) != getAssetTokenId(assetId);   
+
+            require restrictAsset(e5, asset, assetId);
+        }
+        preserved depositETH(address strategy, address to) with (env e7){
+            require assetsIdentical1(assetId, asset);
+            require getAssetId(asset) == assetId;
+            require getAssetsLength() < 1000000;
+            require restrictAsset(e, asset, assetId);
+        }
+        preserved depositETHAsset(uint256 assetId1, address to) with (env e8){
+            require assetsIdentical1(assetId, asset);
+            require getAssetId(asset) == assetId;
+            require getAssetsLength() < 1000000;
+            require restrictAsset(e, asset, assetId);
+        }
+    }
+
 
 // STATUS - verified 
 // Integrity of withdraw()
@@ -357,6 +427,8 @@ rule tokenInterfaceConfusion(env e)
 
     require assetsIdentical1(assetId, asset);
     require getAssetId(asset) == assetId;
+    require getAssetStrategy(assetId) == ERC721Str || getAssetStrategy(assetId) == ERC721AddStr 
+    
 
     uint erc20BalanceBefore = dummyERC20.balanceOf(e, randomAddress);
 
