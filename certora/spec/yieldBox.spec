@@ -331,13 +331,13 @@ invariant sharesToTokensRatio(YieldData.Asset asset, uint256 assetId, env e)
 
             require restrictAsset(e5, asset, assetId);
         }
-        preserved depositETH(address strategy, address to) with (env e7){
+        preserved depositETH(address strategy, address to, uint256 amount) with (env e7){
             require assetsIdentical1(assetId, asset);
             require getAssetId(asset) == assetId;
             require getAssetsLength() < 1000000;
             require restrictAsset(e, asset, assetId);
         }
-        preserved depositETHAsset(uint256 assetId1, address to) with (env e8){
+        preserved depositETHAsset(uint256 assetId1, address to, uint256 amount) with (env e8){
             require assetsIdentical1(assetId, asset);
             require getAssetId(asset) == assetId;
             require getAssetsLength() < 1000000;
