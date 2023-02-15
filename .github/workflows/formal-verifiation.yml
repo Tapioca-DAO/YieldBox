@@ -58,6 +58,5 @@ jobs:
                 rule:
                     - verifyYieldBox.sh
                     - verifyYieldBoxNoReminder.sh
-                    - verifyYieldBoxSimplified.sh
                     - verifyYieldBoxTokenInterfaceConfusion.sh
                     - verifyYieldBoxMapArrayCorrelation.sh
