@@ -17,7 +17,6 @@ struct NativeToken {
 /// - low and predictable gas usage
 /// - simplified approval
 /// - no hidden features, all these tokens behave the same
-/// TODO: MintBatch? BurnBatch?
 
 contract NativeTokenFactory is AssetRegister {
     using BoringMath for uint256;
