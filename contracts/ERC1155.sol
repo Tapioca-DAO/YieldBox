@@ -12,7 +12,6 @@ contract ERC1155 is IERC1155 {
 
     // mappings
 
-    //[sender][operator][token][tokenId][approved]
     mapping(address => mapping(address => bool)) public override isApprovedForAll; // map of operator approval
     mapping(address => mapping(uint256 => uint256)) public override balanceOf; // map of tokens owned by
     mapping(uint256 => uint256) public totalSupply; // totalSupply per token
