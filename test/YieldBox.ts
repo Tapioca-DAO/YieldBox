@@ -27,7 +27,7 @@ import {
 import { TokenType } from "../sdk"
 chai.use(solidity)
 
-describe.only("YieldBox", function () {
+describe("YieldBox", function () {
     let deployer: SignerWithAddress, alice: SignerWithAddress, bob: SignerWithAddress, carol: SignerWithAddress
     let Deployer: string, Alice: string, Bob: string, Carol: string
     const Zero = ethers.constants.AddressZero
@@ -416,6 +416,20 @@ describe.only("YieldBox", function () {
             await yieldBox.connect(alice).withdraw(4, Deployer, Deployer, 1000, 0)
         })
 
+        it("runs full cycle as setApprovalForAsset", async function () {
+            await yieldBox.registerAsset(TokenType.ERC20, token.address, tokenStrategy.address, 0)
+            const id = await yieldBox.ids(TokenType.ERC20, token.address, tokenStrategy.address, 0)
+
+            await expect(yieldBox.connect(alice).depositAsset(id, Deployer, Deployer, 1000, 0)).to.be.revertedWith("Transfer not allowed")
+            await yieldBox.setApprovalForAsset(Alice, id, true)
+            await expect(yieldBox.connect(alice).depositAsset(id, Deployer, Deployer, 1000, 0)).to.not.be.reverted
+
+            const balance = await yieldBox.balanceOf(Deployer, id)
+            expect(balance.gt(0)).to.be.true
+
+            await yieldBox.connect(alice).withdraw(id, Deployer, Deployer, 1000, 0)
+        })
+
         it("runs full cycle as masterContract", async function () {
             const master = await new MasterContractFullCycleMock__factory(deployer).deploy(yieldBox.address)
             await master.deployed()
@@ -447,6 +461,12 @@ describe.only("YieldBox", function () {
     describe("setApprovalForAll", () => {
         it("reverts when operator is 0", async function () {
             await expect(yieldBox.setApprovalForAll(Zero, true)).to.be.revertedWith("YieldBox: operator not set")
+        })
+    })
+
+    describe("setApprovalForAsset", () => {
+        it("reverts when asset does not exist", async function () {
+            await expect(yieldBox.setApprovalForAsset(Alice, 999999999999999, true)).to.be.revertedWith("YieldBox: asset not valid")
         })
     })
 })
