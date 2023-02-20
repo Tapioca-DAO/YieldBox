@@ -47,6 +47,9 @@ import "./YieldBoxURIBuilder.sol";
 /// Yield from this will go to the token depositors.
 /// Any funds transfered directly onto the YieldBox will be lost, use the deposit function instead.
 contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, ERC1155TokenReceiver {
+    // ******************* //
+    // *** CONSTRUCTOR *** //
+    // ******************* //
     using BoringAddress for address;
     using BoringERC20 for IERC20;
     using BoringERC20 for IWrappedNative;
@@ -117,7 +120,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, E
         address to,
         uint256 amount,
         uint256 share
-    ) public allowed(from) returns (uint256 amountOut, uint256 shareOut) {
+    ) public allowed(from, assetId) returns (uint256 amountOut, uint256 shareOut) {
         // Checks
         Asset storage asset = assets[assetId];
         require(asset.tokenType != TokenType.Native && asset.tokenType != TokenType.ERC721, "YieldBox: can't deposit type");
@@ -161,7 +164,11 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, E
     /// @param to which account to push the tokens.
     /// @return amountOut The amount deposited.
     /// @return shareOut The deposited amount repesented in shares.
-    function depositNFTAsset(uint256 assetId, address from, address to) public allowed(from) returns (uint256 amountOut, uint256 shareOut) {
+    function depositNFTAsset(
+        uint256 assetId,
+        address from,
+        address to
+    ) public allowed(from, assetId) returns (uint256 amountOut, uint256 shareOut) {
         // Checks
         Asset storage asset = assets[assetId];
         require(asset.tokenType == TokenType.ERC721, "YieldBox: not ERC721");
@@ -218,7 +225,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, E
         address to,
         uint256 amount,
         uint256 share
-    ) public allowed(from) returns (uint256 amountOut, uint256 shareOut) {
+    ) public allowed(from, assetId) returns (uint256 amountOut, uint256 shareOut) {
         // Checks
         Asset storage asset = assets[assetId];
         require(asset.tokenType != TokenType.Native, "YieldBox: can't withdraw Native");
@@ -248,11 +255,16 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, E
     /// @param to which user to push the tokens.
     /// @param assetId The id of the asset.
     /// @param share The amount of `token` in shares.
-    function transfer(address from, address to, uint256 assetId, uint256 share) public allowed(from) {
+    function transfer(address from, address to, uint256 assetId, uint256 share) public allowed(from, assetId) {
         _transferSingle(from, to, assetId, share);
     }
 
-    function batchTransfer(address from, address to, uint256[] calldata assetIds_, uint256[] calldata shares_) public allowed(from) {
+    function batchTransfer(
+        address from,
+        address to,
+        uint256[] calldata assetIds_,
+        uint256[] calldata shares_
+    ) public allowed(from, type(uint256).max) {
         _transferBatch(from, to, assetIds_, shares_);
     }
 
@@ -261,7 +273,12 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, E
     /// @param from which user to pull the tokens.
     /// @param tos The receivers of the tokens.
     /// @param shares The amount of `token` in shares for each receiver in `tos`.
-    function transferMultiple(address from, address[] calldata tos, uint256 assetId, uint256[] calldata shares) public allowed(from) {
+    function transferMultiple(
+        address from,
+        address[] calldata tos,
+        uint256 assetId,
+        uint256[] calldata shares
+    ) public allowed(from, type(uint256).max) {
         // Checks
         uint256 len = tos.length;
         for (uint256 i = 0; i < len; i++) {
@@ -292,6 +309,20 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, E
         isApprovedForAll[msg.sender][operator] = approved;
 
         emit ApprovalForAll(msg.sender, operator, approved);
+    }
+
+    /// @notice Update approval status for an operator and for a specific asset
+    /// @param operator The address approved to perform actions on your behalf
+    /// @param assetId The asset id  to update approval status for
+    /// @param approved True/False
+    function setApprovalForAsset(address operator, uint256 assetId, bool approved) external override {
+        // Checks
+        require(operator != address(0), "YieldBox: operator not set"); // Important for security
+        require(operator != address(this), "YieldBox: can't approve yieldBox");
+        require(assetId < assetCount(), "YieldBox: asset not valid");
+        isApprovedForAsset[msg.sender][operator][assetId] = approved;
+
+        emit ApprovalForAsset(msg.sender, operator, assetId, approved);
     }
 
     // This functionality has been split off into a separate contract. This is only a view function, so gas usage isn't a huge issue.
