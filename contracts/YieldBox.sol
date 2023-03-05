@@ -334,9 +334,23 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
         require(operator != address(0), "YieldBox: operator not set"); // Important for security
         require(operator != address(this), "YieldBox: can't approve yieldBox");
         require(assetId < assetCount(), "YieldBox: asset not valid");
-        isApprovedForAsset[msg.sender][operator][assetId] = approved;
 
-        emit ApprovalForAsset(msg.sender, operator, assetId, approved);
+        _setApprovalForAsset(msg.sender, operator, assetId, approved);
+    }
+
+    /// @notice Update approval status for an operator and for a specific asset
+    /// @param _owner The owner of the asset
+    /// @param operator The address approved to perform actions on your behalf
+    /// @param assetId The asset id  to update approval status for
+    /// @param approved True/False
+    function _setApprovalForAsset(
+        address _owner,
+        address operator,
+        uint256 assetId,
+        bool approved
+    ) internal override {
+        isApprovedForAsset[_owner][operator][assetId] = approved;
+        emit ApprovalForAsset(_owner, operator, assetId, approved);
     }
 
     // This functionality has been split off into a separate contract. This is only a view function, so gas usage isn't a huge issue.

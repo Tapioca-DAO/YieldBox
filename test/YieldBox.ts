@@ -20,6 +20,7 @@ import {
     WETH9Mock,
     WETH9Mock__factory,
     YieldBox,
+    YieldBoxPermit,
     YieldBoxURIBuilder,
     YieldBoxURIBuilder__factory,
     YieldBox__factory,
@@ -467,6 +468,99 @@ describe("YieldBox", function () {
     describe("setApprovalForAsset", () => {
         it("reverts when asset does not exist", async function () {
             await expect(yieldBox.setApprovalForAsset(Alice, 999999999999999, true)).to.be.revertedWith("YieldBox: asset not valid")
+        })
+    })
+
+    describe("YieldBoxPermit", () => {
+        async function getYieldBoxPermitSignature(
+            wallet: SignerWithAddress,
+            token: YieldBox,
+            spender: string,
+            assetId: number,
+            deadline = ethers.constants.MaxUint256,
+            permitConfig?: { nonce?: any; name?: string; chainId?: number; version?: string }
+        ) {
+            const [nonce, name, version, chainId] = await Promise.all([
+                permitConfig?.nonce ?? token.nonces(wallet.address),
+                "YieldBox",
+                permitConfig?.version ?? "1",
+                permitConfig?.chainId ?? wallet.getChainId(),
+            ])
+
+            return ethers.utils.splitSignature(
+                await wallet._signTypedData(
+                    {
+                        name,
+                        version,
+                        chainId,
+                        verifyingContract: token.address,
+                    },
+                    {
+                        Permit: [
+                            {
+                                name: "owner",
+                                type: "address",
+                            },
+                            {
+                                name: "spender",
+                                type: "address",
+                            },
+                            {
+                                name: "assetId",
+                                type: "uint256",
+                            },
+                            {
+                                name: "nonce",
+                                type: "uint256",
+                            },
+                            {
+                                name: "deadline",
+                                type: "uint256",
+                            },
+                        ],
+                    },
+                    {
+                        owner: wallet.address,
+                        spender,
+                        assetId,
+                        nonce,
+                        deadline,
+                    }
+                )
+            )
+        }
+
+        it.only("Allow batched permit and transfer", async function () {
+            await yieldBox.deposit(TokenType.ERC20, token.address, tokenStrategy.address, 0, deployer.address, deployer.address, 1000, 0)
+
+            const assetId = await yieldBox.ids(TokenType.ERC20, token.address, tokenStrategy.address, 0)
+
+            const deadline = (await ethers.provider.getBlock("latest")).timestamp + 10000
+            const { v, r, s } = await getYieldBoxPermitSignature(
+                deployer,
+                yieldBox,
+                alice.address,
+                assetId.toNumber(),
+                ethers.BigNumber.from(deadline)
+            )
+
+            await expect(yieldBox.connect(alice).permit(deployer.address, alice.address, 3, deadline, v, r, s)).to.be.revertedWith(
+                "YieldBoxPermit: invalid signature"
+            )
+
+            const permitTx = yieldBox.interface.encodeFunctionData("permit", [deployer.address, alice.address, assetId, deadline, v, r, s])
+            const transferTx = yieldBox.interface.encodeFunctionData("transfer", [
+                deployer.address,
+                alice.address,
+                assetId,
+                await yieldBox.toShare(assetId, 1000, false),
+            ])
+
+            await expect(yieldBox.connect(alice).batch([permitTx, transferTx], true))
+                .to.emit(yieldBox, "ApprovalForAsset")
+                .withArgs(deployer.address, alice.address, assetId, true)
+
+            await expect(yieldBox.connect(alice).batch([permitTx, transferTx], true)).to.be.revertedWith("YieldBoxPermit: invalid signature")
         })
     })
 })
