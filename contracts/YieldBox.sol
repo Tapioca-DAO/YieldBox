@@ -38,6 +38,7 @@ import "./AssetRegister.sol";
 import "./NativeTokenFactory.sol";
 import "./YieldBoxRebase.sol";
 import "./YieldBoxURIBuilder.sol";
+import "./YieldBoxPermit.sol";
 
 // solhint-disable no-empty-blocks
 
@@ -46,7 +47,7 @@ import "./YieldBoxURIBuilder.sol";
 /// @notice The YieldBox is a vault for tokens. The stored tokens can assigned to strategies.
 /// Yield from this will go to the token depositors.
 /// Any funds transfered directly onto the YieldBox will be lost, use the deposit function instead.
-contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, ERC1155TokenReceiver {
+contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, ERC1155TokenReceiver {
     // ******************* //
     // *** CONSTRUCTOR *** //
     // ******************* //
@@ -87,7 +88,7 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, E
     IWrappedNative public immutable wrappedNative;
     YieldBoxURIBuilder public immutable uriBuilder;
 
-    constructor(IWrappedNative wrappedNative_, YieldBoxURIBuilder uriBuilder_) {
+    constructor(IWrappedNative wrappedNative_, YieldBoxURIBuilder uriBuilder_) YieldBoxPermit("YieldBox") {
         wrappedNative = wrappedNative_;
         uriBuilder = uriBuilder_;
     }
@@ -192,7 +193,11 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, E
     /// @param amount ETH amount to deposit.
     /// @return amountOut The amount deposited.
     /// @return shareOut The deposited amount repesented in shares.
-    function depositETHAsset(uint256 assetId, address to, uint256 amount) public payable returns (uint256 amountOut, uint256 shareOut) {
+    function depositETHAsset(
+        uint256 assetId,
+        address to,
+        uint256 amount
+    ) public payable returns (uint256 amountOut, uint256 shareOut) {
         // Checks
         Asset storage asset = assets[assetId];
         require(asset.tokenType == TokenType.ERC20 && asset.contractAddress == address(wrappedNative), "YieldBox: not wrappedNative");
@@ -255,7 +260,12 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, E
     /// @param to which user to push the tokens.
     /// @param assetId The id of the asset.
     /// @param share The amount of `token` in shares.
-    function transfer(address from, address to, uint256 assetId, uint256 share) public allowed(from, assetId) {
+    function transfer(
+        address from,
+        address to,
+        uint256 assetId,
+        uint256 share
+    ) public allowed(from, assetId) {
         _transferSingle(from, to, assetId, share);
     }
 
@@ -315,7 +325,11 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, E
     /// @param operator The address approved to perform actions on your behalf
     /// @param assetId The asset id  to update approval status for
     /// @param approved True/False
-    function setApprovalForAsset(address operator, uint256 assetId, bool approved) external override {
+    function setApprovalForAsset(
+        address operator,
+        uint256 assetId,
+        bool approved
+    ) external override {
         // Checks
         require(operator != address(0), "YieldBox: operator not set"); // Important for security
         require(operator != address(this), "YieldBox: can't approve yieldBox");
@@ -359,7 +373,11 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, E
     /// @param amount The `token` amount.
     /// @param roundUp If the result `share` should be rounded up.
     /// @return share The token amount represented in shares.
-    function toShare(uint256 assetId, uint256 amount, bool roundUp) external view returns (uint256 share) {
+    function toShare(
+        uint256 assetId,
+        uint256 amount,
+        bool roundUp
+    ) external view returns (uint256 share) {
         if (assets[assetId].tokenType == TokenType.Native || assets[assetId].tokenType == TokenType.ERC721) {
             share = amount;
         } else {
@@ -372,7 +390,11 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, E
     /// @param share The amount of shares.
     /// @param roundUp If the result should be rounded up.
     /// @return amount The share amount back into native representation.
-    function toAmount(uint256 assetId, uint256 share, bool roundUp) external view returns (uint256 amount) {
+    function toAmount(
+        uint256 assetId,
+        uint256 share,
+        bool roundUp
+    ) external view returns (uint256 amount) {
         if (assets[assetId].tokenType == TokenType.Native || assets[assetId].tokenType == TokenType.ERC721) {
             amount = share;
         } else {
@@ -425,7 +447,11 @@ contract YieldBox is BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, E
     /// @param amount amount to deposit.
     /// @return amountOut The amount deposited.
     /// @return shareOut The deposited amount repesented in shares.
-    function depositETH(IStrategy strategy, address to, uint256 amount) public payable returns (uint256 amountOut, uint256 shareOut) {
+    function depositETH(
+        IStrategy strategy,
+        address to,
+        uint256 amount
+    ) public payable returns (uint256 amountOut, uint256 shareOut) {
         return depositETHAsset(registerAsset(TokenType.ERC20, address(wrappedNative), strategy, 0), to, amount);
     }
 }
