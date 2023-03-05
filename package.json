@@ -21,7 +21,7 @@
     },
     "dependencies": {
         "@boringcrypto/boring-solidity": "boringcrypto/BoringSolidity#c343377d4633f8a7f320993679d9f2b04c87b066",
-        "@openzeppelin/contracts": "^4.5.0",
+        "@openzeppelin/contracts": "^4.8.2",
         "@popperjs/core": "^2.11.2",
         "@uniswap/token-lists": "^1.0.0-beta.28",
         "axios": "^0.26.1",
