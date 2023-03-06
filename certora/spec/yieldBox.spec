@@ -402,7 +402,7 @@ rule withdrawForNFTReverts()
 
 // updated code - verified
 // new code - verified 
-rule dontBurnSharesWithdraw(env e, env e2) {
+rule burnNftSharesWithdraw(env e, env e2) {
     uint amountOut; uint shareOut;
     uint amount; uint share;
     address from; address to;
@@ -418,12 +418,14 @@ rule dontBurnSharesWithdraw(env e, env e2) {
     address ownerBefore = dummyERC721.ownerOf(e2, asset.tokenId);
     uint256 sharesBefore = balanceOf(e2, from, assetId);
 
+    assert sharesBefore == 1;
+
     amountOut, shareOut = withdraw(e, assetId, from, to, amount, share);
 
     address ownerAfter = dummyERC721.ownerOf(e2, asset.tokenId);
     uint256 sharesAfter = balanceOf(e2, from, assetId);
 
-    assert sharesBefore == sharesAfter => ownerBefore == ownerAfter;
+    assert sharesAfter == 0;
 }
 
 
