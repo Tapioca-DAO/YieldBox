@@ -352,7 +352,7 @@ rule strategyCorrelatesAsset(env e, env e2, method f) filtered {f -> excludeMeth
 // updated code - verified reachability fails (proves that bug was fixed because any ERC20 balance is unchanged)
 // new code - verified (proves that bug was fixed because any ERC20 balance is unchanged)
 // old code - fails (there is a bug)
-rule tokenInterfaceConfusion(env e)
+rule tokenInterfaceConfusion(env e, env e2)
 {
     uint amountOut; uint shareOut;
     address from; address to;
@@ -363,18 +363,17 @@ rule tokenInterfaceConfusion(env e)
 
     require assetsIdentical1(assetId, asset);
     require getAssetId(asset) == assetId;
-    require getAssetStrategy(assetId) == ERC721Str || getAssetStrategy(assetId) == ERC721AddStr;
+    // require randomAddress != from;       // shows the sense of the bug even without this line becuase asset.tokenId will be used as an amount for ERC20 transfer. 
+                                                // Uncomment this line to see counter example explained by Certora team.
     
-
     uint erc20BalanceBefore = dummyERC20.balanceOf(e, randomAddress);
 
-    amountOut, shareOut = depositNFTAsset(e, assetId, from, to);
+    amountOut, shareOut = depositNFTAsset(e2, assetId, from, to);
 
     uint erc20BalanceAfter = dummyERC20.balanceOf(e, randomAddress);
 
     assert (asset.tokenType == YieldData.TokenType.ERC721 && asset.contractAddress == dummyERC20) => erc20BalanceBefore == erc20BalanceAfter;
 }
-
 
 
 // updated code - violated becuase withdrawNFT() was created
