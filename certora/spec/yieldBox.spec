@@ -293,6 +293,8 @@ rule withdrawIntegrity()
     uint assetId;
     require assetsIdentical1(assetId, asset);
     require getAssetId(asset) == assetId;
+    require asset.tokenType != YieldData.TokenType.ERC721;
+
 
     uint strategyBalanceBefore = getAssetBalance(e, asset);
     uint balanceBefore = balanceOf(e,from, assetId);
@@ -376,33 +378,9 @@ rule tokenInterfaceConfusion(env e, env e2)
 }
 
 
-// updated code - violated becuase withdrawNFT() was created
-// new code - violated becuase withdrawNFT() was created
-// old code - violated (there is a bug) because _tokenBalanceOf() doesn't have ERC721 branch, thus withdraw always reverts
-rule withdrawForNFTReverts()
-{
-    env e;
-    uint amountOut; uint shareOut;
-    uint amount; uint share;
-    address from; address to;
-    uint assetId;
-
-    YieldData.Asset asset;
-    require assetsIdentical1(assetId,asset);
-
-    amountOut, shareOut = withdraw@withrevert(e, assetId, from, to, amount, share);
-    bool reverted = lastReverted;
-
-    assert !reverted => (getAssetTokenType(assetId) == YieldData.TokenType.ERC721 ||
-           getAssetStrategy(assetId) == 0 ||
-           getAssetAddress(assetId) == dummyERC721);
-}
-
-
-
 // updated code - verified
 // new code - verified 
-rule burnNftSharesWithdraw(env e, env e2) {
+rule dontBurnSharesWithdraw(env e, env e2) {
     uint amountOut; uint shareOut;
     uint amount; uint share;
     address from; address to;
@@ -418,14 +396,12 @@ rule burnNftSharesWithdraw(env e, env e2) {
     address ownerBefore = dummyERC721.ownerOf(e2, asset.tokenId);
     uint256 sharesBefore = balanceOf(e2, from, assetId);
 
-    assert sharesBefore == 1;
-
     amountOut, shareOut = withdraw(e, assetId, from, to, amount, share);
 
     address ownerAfter = dummyERC721.ownerOf(e2, asset.tokenId);
     uint256 sharesAfter = balanceOf(e2, from, assetId);
 
-    assert sharesAfter == 0;
+    assert sharesBefore == sharesAfter => ownerBefore == ownerAfter;
 }
 
 
