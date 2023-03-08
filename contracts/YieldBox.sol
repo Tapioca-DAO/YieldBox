@@ -360,9 +360,20 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
         require(operator != address(this), "YieldBox: can't approve yieldBox");
 
         // Effects
-        isApprovedForAll[msg.sender][operator] = approved;
+        _setApprovalForAll(msg.sender, operator, approved);
+    }
 
-        emit ApprovalForAll(msg.sender, operator, approved);
+    /// @notice Update approval status for an operator
+    /// @param _owner The YieldBox account owner
+    /// @param operator The address approved to perform actions on your behalf
+    /// @param approved True/False
+    function _setApprovalForAll(
+        address _owner,
+        address operator,
+        bool approved
+    ) internal override{
+        isApprovedForAll[_owner][operator] = approved;
+        emit ApprovalForAll(_owner, operator, approved);
     }
 
     /// @notice Update approval status for an operator and for a specific asset
@@ -379,6 +390,7 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
         require(operator != address(this), "YieldBox: can't approve yieldBox");
         require(assetId < assetCount(), "YieldBox: asset not valid");
 
+        // Effects
         _setApprovalForAsset(msg.sender, operator, assetId, approved);
     }
 

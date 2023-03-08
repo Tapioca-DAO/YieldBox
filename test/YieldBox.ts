@@ -473,6 +473,7 @@ describe("YieldBox", function () {
 
     describe("YieldBoxPermit", () => {
         async function getYieldBoxPermitSignature(
+            permitType: "asset" | "all",
             wallet: SignerWithAddress,
             token: YieldBox,
             spender: string,
@@ -487,6 +488,29 @@ describe("YieldBox", function () {
                 permitConfig?.chainId ?? wallet.getChainId(),
             ])
 
+            const typesInfo = [
+                {
+                    name: "owner",
+                    type: "address",
+                },
+                {
+                    name: "spender",
+                    type: "address",
+                },
+                {
+                    name: "assetId",
+                    type: "uint256",
+                },
+                {
+                    name: "nonce",
+                    type: "uint256",
+                },
+                {
+                    name: "deadline",
+                    type: "uint256",
+                },
+            ]
+
             return ethers.utils.splitSignature(
                 await wallet._signTypedData(
                     {
@@ -495,31 +519,16 @@ describe("YieldBox", function () {
                         chainId,
                         verifyingContract: token.address,
                     },
+                    permitType === "asset"
+                        ? {
+                              Permit: typesInfo,
+                          }
+                        : {
+                              PermitAll: typesInfo.filter((x) => permitType !== "all" || (permitType === "all" && x.name !== "assetId")),
+                          },
+
                     {
-                        Permit: [
-                            {
-                                name: "owner",
-                                type: "address",
-                            },
-                            {
-                                name: "spender",
-                                type: "address",
-                            },
-                            {
-                                name: "assetId",
-                                type: "uint256",
-                            },
-                            {
-                                name: "nonce",
-                                type: "uint256",
-                            },
-                            {
-                                name: "deadline",
-                                type: "uint256",
-                            },
-                        ],
-                    },
-                    {
+                        ...(permitType === "all" ? {} : { assetId }),
                         owner: wallet.address,
                         spender,
                         assetId,
@@ -530,13 +539,14 @@ describe("YieldBox", function () {
             )
         }
 
-        it.only("Allow batched permit and transfer", async function () {
+        it("Allow batched permit and transfer for a single asset", async function () {
             await yieldBox.deposit(TokenType.ERC20, token.address, tokenStrategy.address, 0, deployer.address, deployer.address, 1000, 0)
 
             const assetId = await yieldBox.ids(TokenType.ERC20, token.address, tokenStrategy.address, 0)
 
             const deadline = (await ethers.provider.getBlock("latest")).timestamp + 10000
             const { v, r, s } = await getYieldBoxPermitSignature(
+                "asset",
                 deployer,
                 yieldBox,
                 alice.address,
@@ -559,6 +569,36 @@ describe("YieldBox", function () {
             await expect(yieldBox.connect(alice).batch([permitTx, transferTx], true))
                 .to.emit(yieldBox, "ApprovalForAsset")
                 .withArgs(deployer.address, alice.address, assetId, true)
+
+            await expect(yieldBox.connect(alice).batch([permitTx, transferTx], true)).to.be.revertedWith("YieldBoxPermit: invalid signature")
+        })
+
+        it.only("Allow batched permit and transfer for all assets", async function () {
+            await yieldBox.deposit(TokenType.ERC20, token.address, tokenStrategy.address, 0, deployer.address, deployer.address, 1000, 0)
+
+            const assetId = await yieldBox.ids(TokenType.ERC20, token.address, tokenStrategy.address, 0)
+
+            const deadline = (await ethers.provider.getBlock("latest")).timestamp + 10000
+            const { v, r, s } = await getYieldBoxPermitSignature(
+                "all",
+                deployer,
+                yieldBox,
+                alice.address,
+                assetId.toNumber(),
+                ethers.BigNumber.from(deadline)
+            )
+
+            const permitTx = yieldBox.interface.encodeFunctionData("permitAll", [deployer.address, alice.address, deadline, v, r, s])
+            const transferTx = yieldBox.interface.encodeFunctionData("transfer", [
+                deployer.address,
+                alice.address,
+                assetId,
+                await yieldBox.toShare(assetId, 1000, false),
+            ])
+
+            await expect(yieldBox.connect(alice).batch([permitTx, transferTx], true))
+                .to.emit(yieldBox, "ApprovalForAll")
+                .withArgs(deployer.address, alice.address, true)
 
             await expect(yieldBox.connect(alice).batch([permitTx, transferTx], true)).to.be.revertedWith("YieldBoxPermit: invalid signature")
         })
