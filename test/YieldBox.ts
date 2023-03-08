@@ -573,7 +573,7 @@ describe("YieldBox", function () {
             await expect(yieldBox.connect(alice).batch([permitTx, transferTx], true)).to.be.revertedWith("YieldBoxPermit: invalid signature")
         })
 
-        it.only("Allow batched permit and transfer for all assets", async function () {
+        it("Allow batched permit and transfer for all assets", async function () {
             await yieldBox.deposit(TokenType.ERC20, token.address, tokenStrategy.address, 0, deployer.address, deployer.address, 1000, 0)
 
             const assetId = await yieldBox.ids(TokenType.ERC20, token.address, tokenStrategy.address, 0)
