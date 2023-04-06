@@ -30,31 +30,26 @@ interface IYieldBox {
 
     function totalSupply(uint256 assetId) external view returns (uint256 totalSupply);
 
+    function setApprovalForAsset(
+        address operator,
+        uint256 assetId,
+        bool approved
+    ) external;
+
     function depositAsset(
         uint256 assetId,
         address from,
         address to,
         uint256 amount,
-        uint256 share,
-        uint256 minShareOut
+        uint256 share
     ) external returns (uint256 amountOut, uint256 shareOut);
 
-    function depositNFTAsset(
+    function withdraw(
         uint256 assetId,
         address from,
-        address to
-    ) external returns (uint256 amountOut, uint256 shareOut);
-
-    function depositETHAsset(
-        uint256 assetId,
         address to,
-        uint256 minShareOut
-    ) external payable returns (uint256 amountOut, uint256 shareOut);
-
-    function withdrawNFT(
-        uint256 assetId,
-        address from,
-        address to
+        uint256 amount,
+        uint256 share
     ) external returns (uint256 amountOut, uint256 shareOut);
 
     function transfer(

@@ -1,8 +1,4 @@
-cd certora
-touch applyHarnessSimple.patch
-make -f Makefilesimple munged
-cd ..
-echo "key length" ${#CERTORAKEY}
+
 
 certoraRun  certora/harness/YieldBoxHarness.sol \
     certora/helpers/DummyWeth.sol \
