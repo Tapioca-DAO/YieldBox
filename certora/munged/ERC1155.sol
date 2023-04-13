@@ -61,7 +61,7 @@ contract ERC1155 is IERC1155 {
         emit TransferSingle(msg.sender, from, to, id, value);
     }
 
-    function _transferBatch(address from, address to, uint256[] calldata ids, uint256[] calldata values) internal {
+    function _transferBatch(address from, address to, uint256[] memory ids, uint256[] memory values) internal {  // HARNESS: calldata -> memory
         require(to != address(0), "No 0 address");
 
         uint256 len = ids.length;

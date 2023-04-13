@@ -315,13 +315,17 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
         _transferSingle(from, to, assetId, share);
     }
 
+    address[] public toes;
+    uint256[] public sharesGlobal;
+    uint256[] public assetIdsGlobal;
+
     function batchTransfer(
         address from,
         address to,
         uint256[] calldata assetIds_,
         uint256[] calldata shares_
     ) public allowed(from, type(uint256).max) {
-        _transferBatch(from, to, assetIds_, shares_);
+        _transferBatch(from, to, assetIdsGlobal, sharesGlobal);
     }
 
     /// @notice Transfer shares from a user account to multiple other ones.
@@ -336,16 +340,16 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
         uint256[] calldata shares
     ) public allowed(from, type(uint256).max) {
         // Checks
-        uint256 len = tos.length;
+        uint256 len = toes.length;
         for (uint256 i = 0; i < len; i++) {
-            require(tos[i] != address(0), "YieldBox: to not set"); // To avoid a bad UI from burning funds
+            require(toes[i] != address(0), "YieldBox: to not set"); // To avoid a bad UI from burning funds
         }
 
         // Effects
         uint256 totalAmount;
         for (uint256 i = 0; i < len; i++) {
-            address to = tos[i];
-            uint256 share_ = shares[i];
+            address to = toes[i];
+            uint256 share_ = sharesGlobal[i];
             balanceOf[to][assetId] += share_;
             totalAmount += share_;
             emit TransferSingle(msg.sender, from, to, assetId, share_);

@@ -34,6 +34,9 @@ methods {
     function totalSupply(uint256)        external returns(uint256) envfree;
     function isApprovedForAll(address, address) external returns(bool) envfree;
     function isApprovedForAsset(address, address, uint256) external returns(bool) envfree;
+    function toes(uint256) external returns(address) envfree;
+    function sharesGlobal(uint256) external returns(uint256) envfree;
+    function assetIdsGlobal(uint256) external returns(uint256) envfree;
 
     // harness methods 
     function getAssetArrayElement(uint256)                                          external returns(YieldBoxHarness.Asset)                 envfree;
@@ -306,6 +309,183 @@ rule strategyCorrelatesAsset(env e, env e2, method f) filtered {f -> excludeMeth
 }
 
 
+// STATUS - verified
+// transfer integrity
+rule transferIntegrity(env e) {
+    address from;
+    address to;
+    uint256 assetId;
+    uint256 share;
+
+    address rand;
+    
+    uint256 balanceFromBefore = balanceOf(from, assetId);
+    uint256 balanceToBefore = balanceOf(to, assetId);
+    uint256 balanceRandBefore = balanceOf(rand, assetId);
+    uint256 totalSupplyBefore = totalSupply(assetId);
+
+    transfer(e, from, to, assetId, share);
+
+    uint256 balanceFromAfter = balanceOf(from, assetId);
+    uint256 balanceToAfter = balanceOf(to, assetId);
+    uint256 balanceRandAfter = balanceOf(rand, assetId);
+    uint256 totalSupplyAfter = totalSupply(assetId);
+
+    assert balanceFromBefore - balanceFromAfter == balanceToAfter - balanceToBefore
+            && (from != to => balanceFromBefore - balanceFromAfter == to_mathint(share));
+    assert (rand != from && rand != to) => balanceRandBefore == balanceRandAfter;
+    assert totalSupplyBefore == totalSupplyAfter;
+}
+
+
+// STATUS - verified
+// transfer should revert if msg.sender is not allowed
+rule transferIntegrityRevert(env e) {
+    address from;
+    address to;
+    uint256 assetId;
+    uint256 share;
+
+    address rand;
+    
+    bool allApprovalBefore = isApprovedForAll(from, e.msg.sender);
+    bool asssetsApprovalBefore = isApprovedForAsset(from, e.msg.sender, assetId);
+
+    transfer@withrevert(e, from, to, assetId, share);
+    bool isReverted = lastReverted;
+
+    assert e.msg.sender != from 
+                && !allApprovalBefore
+                && !asssetsApprovalBefore
+            => isReverted;
+}
+
+
+// STATUS - verified
+// batchTransfer integrity
+rule batchTransferIntegrity(env e) {
+    address from;
+    address to;
+    uint256[] assetId;
+    uint256[] share;
+
+    address rand;
+
+    require assetId.length == share.length;
+    require assetId.length <= 3;
+    require assetIdsGlobal(0) == assetId[0]
+            && assetIdsGlobal(1) == assetId[1]
+            && assetIdsGlobal(2) == assetId[2];
+    require sharesGlobal(0) == share[0]
+            && sharesGlobal(1) == share[1]
+            && sharesGlobal(2) == share[2];
+    
+    uint256 balanceFromBefore1 = balanceOf(from, assetId[0]);
+    uint256 balanceToBefore1 = balanceOf(to, assetId[0]);
+    uint256 balanceRandBefore1 = balanceOf(rand, assetId[0]);
+    uint256 totalSupplyBefore1 = totalSupply(assetId[0]);
+
+    uint256 balanceFromBefore2 = balanceOf(from, assetId[1]);
+    uint256 balanceToBefore2 = balanceOf(to, assetId[1]);
+    uint256 balanceRandBefore2 = balanceOf(rand, assetId[1]);
+    uint256 totalSupplyBefore2 = totalSupply(assetId[1]);
+
+    uint256 balanceFromBefore3 = balanceOf(from, assetId[2]);
+    uint256 balanceToBefore3 = balanceOf(to, assetId[2]);
+    uint256 balanceRandBefore3 = balanceOf(rand, assetId[2]);
+    uint256 totalSupplyBefore3 = totalSupply(assetId[2]);
+
+    batchTransfer(e, from, to, assetId, share);
+
+    uint256 balanceFromAfter1 = balanceOf(from, assetId[0]);
+    uint256 balanceToAfter1 = balanceOf(to, assetId[0]);
+    uint256 balanceRandAfter1 = balanceOf(rand, assetId[0]);
+    uint256 totalSupplyAfter1 = totalSupply(assetId[0]);
+
+    uint256 balanceFromAfter2 = balanceOf(from, assetId[1]);
+    uint256 balanceToAfter2 = balanceOf(to, assetId[1]);
+    uint256 balanceRandAfter2 = balanceOf(rand, assetId[1]);
+    uint256 totalSupplyAfter2 = totalSupply(assetId[1]);
+
+    uint256 balanceFromAfter3 = balanceOf(from, assetId[2]);
+    uint256 balanceToAfter3 = balanceOf(to, assetId[2]);
+    uint256 balanceRandAfter3 = balanceOf(rand, assetId[2]);
+    uint256 totalSupplyAfter3 = totalSupply(assetId[2]);
+
+    assert (assetId[0] != assetId[1] && assetId[0] != assetId[2] && assetId[1] != assetId[2])
+            => (balanceFromBefore1 - balanceFromAfter1 == balanceToAfter1 - balanceToBefore1
+                && (from != to => balanceFromBefore1 - balanceFromAfter1 == to_mathint(share[0])));
+    assert (assetId[0] != assetId[1] && assetId[0] != assetId[2] && assetId[1] != assetId[2])
+            => (balanceFromBefore2 - balanceFromAfter2 == balanceToAfter2 - balanceToBefore2
+            && (from != to => balanceFromBefore2 - balanceFromAfter2 == to_mathint(share[1])));
+    assert (assetId[0] != assetId[1] && assetId[0] != assetId[2] && assetId[1] != assetId[2])
+            => (balanceFromBefore3 - balanceFromAfter3 == balanceToAfter3 - balanceToBefore3
+            && (from != to => balanceFromBefore3 - balanceFromAfter3 == to_mathint(share[2])));
+    
+    assert (rand != from && rand != to) => balanceRandBefore1 == balanceRandAfter1;
+    assert (rand != from && rand != to) => balanceRandBefore2 == balanceRandAfter2;
+    assert (rand != from && rand != to) => balanceRandBefore3 == balanceRandAfter3;
+    
+    assert totalSupplyBefore1 == totalSupplyAfter1;
+    assert totalSupplyBefore2 == totalSupplyAfter2;
+    assert totalSupplyBefore3 == totalSupplyAfter3;
+}
+
+
+// STATUS - verified
+// transferMultiple integrity
+rule transferMultipleIntegrity(env e) {
+    address from;
+    address[] to;
+    uint256 assetId;
+    uint256[] share;
+
+    address rand;
+
+    require to.length == share.length;
+    require toes(0) == to[0]
+            && toes(1) == to[1]
+            && toes(2) == to[2];
+    require sharesGlobal(0) == share[0]
+            && sharesGlobal(1) == share[1]
+            && sharesGlobal(2) == share[2];
+    require to.length <= 3;
+    
+    uint256 balanceFromBefore = balanceOf(from, assetId);
+    uint256 balanceToBefore1 = balanceOf(to[0], assetId);
+    uint256 balanceToBefore2 = balanceOf(to[1], assetId);
+    uint256 balanceToBefore3 = balanceOf(to[2], assetId);
+    uint256 balanceRandBefore = balanceOf(rand, assetId);
+    uint256 totalSupplyBefore = totalSupply(assetId);
+
+    transferMultiple(e, from, to, assetId, share);
+
+    uint256 balanceFromAfter = balanceOf(from, assetId);
+    uint256 balanceToAfter1 = balanceOf(to[0], assetId);
+    uint256 balanceToAfter2 = balanceOf(to[1], assetId);
+    uint256 balanceToAfter3 = balanceOf(to[2], assetId);
+    uint256 balanceRandAfter = balanceOf(rand, assetId);
+    uint256 totalSupplyAfter = totalSupply(assetId);
+
+    assert ((to[0] != to[1] && to[0] != to[2] && to[1] != to[2])
+                && (from != to[0] && from != to[1] && from != to[2]))
+            => (balanceFromBefore - balanceFromAfter 
+                    == (balanceToAfter1 - balanceToBefore1
+                        + balanceToAfter2 - balanceToBefore2
+                        + balanceToAfter3 - balanceToBefore3));
+
+    assert (from != to[0] 
+                && from != to[1] 
+                && from != to[2]) 
+            => balanceFromBefore - balanceFromAfter == (share[0] + share[1] + share[2]);
+    
+    assert (rand != from && rand != to[0] && rand != to[1] && rand != to[2]) 
+            => balanceRandBefore == balanceRandAfter;
+
+    assert totalSupplyBefore == totalSupplyAfter;
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////
 //                       Bug check rules                                  //
@@ -441,166 +621,6 @@ rule depositETHCorrectness()
 ////////////////////////////////////////////////////////////////////////////
 
 
-// STATUS - verified
-// transfer integrity
-rule transferIntegrity(env e) {
-    address from;
-    address to;
-    uint256 assetId;
-    uint256 share;
-
-    address rand;
-    
-    uint256 balanceFromBefore = balanceOf(from, assetId);
-    uint256 balanceToBefore = balanceOf(to, assetId);
-    uint256 balanceRandBefore = balanceOf(rand, assetId);
-    uint256 totalSupplyBefore = totalSupply(assetId);
-
-    transfer(e, from, to, assetId, share);
-
-    uint256 balanceFromAfter = balanceOf(from, assetId);
-    uint256 balanceToAfter = balanceOf(to, assetId);
-    uint256 balanceRandAfter = balanceOf(rand, assetId);
-    uint256 totalSupplyAfter = totalSupply(assetId);
-
-    assert balanceFromBefore - balanceFromAfter == balanceToAfter - balanceToBefore
-            && (from != to => balanceFromBefore - balanceFromAfter == to_mathint(share));
-    assert (rand != from && rand != to) => balanceRandBefore == balanceRandAfter;
-    assert totalSupplyBefore == totalSupplyAfter;
-}
-
-
-// STATUS - verified
-rule transferIntegrityRevert(env e) {
-    address from;
-    address to;
-    uint256 assetId;
-    uint256 share;
-
-    address rand;
-    
-    bool allApprovalBefore = isApprovedForAll(from, e.msg.sender);
-    bool asssetsApprovalBefore = isApprovedForAsset(from, e.msg.sender, assetId);
-
-    transfer@withrevert(e, from, to, assetId, share);
-    bool isReverted = lastReverted;
-
-    assert e.msg.sender != from 
-                && !allApprovalBefore
-                && !asssetsApprovalBefore
-            => isReverted;
-}
-
-
-// STATUS - in progress
-// batchTransfer integrity
-rule batchTransferIntegrity(env e) {
-    address from;
-    address to;
-    uint256[] assetId;
-    uint256[] share;
-
-    address rand;
-
-    require assetId.length == share.length;
-    require assetId.length <= 3;
-    
-    uint256 balanceFromBefore1 = balanceOf(from, assetId[0]);
-    uint256 balanceToBefore1 = balanceOf(to, assetId[0]);
-    uint256 balanceRandBefore1 = balanceOf(rand, assetId[0]);
-    uint256 totalSupplyBefore1 = totalSupply(assetId[0]);
-
-    uint256 balanceFromBefore2 = balanceOf(from, assetId[1]);
-    uint256 balanceToBefore2 = balanceOf(to, assetId[1]);
-    uint256 balanceRandBefore2 = balanceOf(rand, assetId[1]);
-    uint256 totalSupplyBefore2 = totalSupply(assetId[1]);
-
-    uint256 balanceFromBefore3 = balanceOf(from, assetId[2]);
-    uint256 balanceToBefore3 = balanceOf(to, assetId[2]);
-    uint256 balanceRandBefore3 = balanceOf(rand, assetId[2]);
-    uint256 totalSupplyBefore3 = totalSupply(assetId[2]);
-
-    batchTransfer(e, from, to, assetId, share);
-
-    uint256 balanceFromAfter1 = balanceOf(from, assetId[0]);
-    uint256 balanceToAfter1 = balanceOf(to, assetId[0]);
-    uint256 balanceRandAfter1 = balanceOf(rand, assetId[0]);
-    uint256 totalSupplyAfter1 = totalSupply(assetId[0]);
-
-    uint256 balanceFromAfter2 = balanceOf(from, assetId[1]);
-    uint256 balanceToAfter2 = balanceOf(to, assetId[1]);
-    uint256 balanceRandAfter2 = balanceOf(rand, assetId[1]);
-    uint256 totalSupplyAfter2 = totalSupply(assetId[1]);
-
-    uint256 balanceFromAfter3 = balanceOf(from, assetId[2]);
-    uint256 balanceToAfter3 = balanceOf(to, assetId[2]);
-    uint256 balanceRandAfter3 = balanceOf(rand, assetId[2]);
-    uint256 totalSupplyAfter3 = totalSupply(assetId[2]);
-
-    require assetId[0] != assetId[1] && assetId[0] != assetId[2] && assetId[1] != assetId[2];
-
-    assert balanceFromBefore1 - balanceFromAfter1 == balanceToAfter1 - balanceToBefore1
-            && (from != to => balanceFromBefore1 - balanceFromAfter1 == to_mathint(share[0]));
-    assert balanceFromBefore2 - balanceFromAfter2 == balanceToAfter2 - balanceToBefore2
-            && (from != to => balanceFromBefore2 - balanceFromAfter2 == to_mathint(share[1]));
-    assert balanceFromBefore3 - balanceFromAfter3 == balanceToAfter3 - balanceToBefore3
-            && (from != to => balanceFromBefore3 - balanceFromAfter3 == to_mathint(share[2]));
-    
-    assert (rand != from && rand != to) => balanceRandBefore1 == balanceRandAfter1;
-    assert (rand != from && rand != to) => balanceRandBefore2 == balanceRandAfter2;
-    assert (rand != from && rand != to) => balanceRandBefore3 == balanceRandAfter3;
-    
-    assert totalSupplyBefore1 == totalSupplyAfter1;
-    assert totalSupplyBefore2 == totalSupplyAfter2;
-    assert totalSupplyBefore3 == totalSupplyAfter3;
-}
-
-
-// STATUS - in progress
-// transferMultiple integrity
-rule transferMultipleIntegrity(env e) {
-    address from;
-    address[] to;
-    uint256 assetId;
-    uint256[] share;
-
-    address rand;
-
-    require to.length == share.length;
-    require to.length <= 3;
-    
-    uint256 balanceFromBefore = balanceOf(from, assetId);
-    uint256 balanceToBefore1 = balanceOf(to[0], assetId);
-    uint256 balanceToBefore2 = balanceOf(to[1], assetId);
-    uint256 balanceToBefore3 = balanceOf(to[2], assetId);
-    uint256 balanceRandBefore = balanceOf(rand, assetId);
-    uint256 totalSupplyBefore = totalSupply(assetId);
-
-    transferMultiple(e, from, to, assetId, share);
-
-    uint256 balanceFromAfter = balanceOf(from, assetId);
-    uint256 balanceToAfter1 = balanceOf(to[0], assetId);
-    uint256 balanceToAfter2 = balanceOf(to[1], assetId);
-    uint256 balanceToAfter3 = balanceOf(to[2], assetId);
-    uint256 balanceRandAfter = balanceOf(rand, assetId);
-    uint256 totalSupplyAfter = totalSupply(assetId);
-
-    assert (balanceFromBefore - balanceFromAfter 
-                == (balanceToAfter1 - balanceToBefore1
-                    + balanceToAfter2 - balanceToBefore2
-                    + balanceToAfter3 - balanceToBefore3))
-            && ((from != to[0] 
-                    && from != to[1] 
-                    && from != to[2]) 
-                => balanceFromBefore - balanceFromAfter == (share[0] + share[1] + share[2]));
-    
-    assert (rand != from && rand != to[0] && rand != to[1] && rand != to[2]) 
-            => balanceRandBefore == balanceRandAfter;
-
-    assert totalSupplyBefore == totalSupplyAfter;
-}
-
-
 // transfer, batchTransfer, transferMultiple result in the same if called with the same data
 
 
@@ -609,5 +629,47 @@ rule transferMultipleIntegrity(env e) {
 
 // permit intergrities
 
+// STATUS - in progress
+// either of permits should allow to transfer / deposit / withdraw
+rule permitShouldAllow(env e, method f) 
+    filtered { f -> f.selector == sig:permit(address, address, uint256, uint256, uint8, bytes32, bytes32).selector 
+                        || f.selector == sig:permitAll(address, address, uint256, uint8, bytes32, bytes32).selector 
+} {
+    address owner;
+    address spender;
+    uint256 assetId;
+    uint256 deadline;
 
-// either of permits should allow to transfer / deposit / withdraw 
+    address from;
+    address to;
+    uint256 share;
+
+    bool allApprovalBefore = isApprovedForAll(from, e.msg.sender);
+    bool asssetsApprovalBefore = isApprovedForAsset(from, e.msg.sender, assetId);
+
+    transfer@withrevert(e, from, to, assetId, share);
+    bool isRevertedTransfer1 = lastReverted;
+
+    bool part1 = e.msg.sender != from 
+                    && !allApprovalBefore
+                    && !asssetsApprovalBefore
+                => isRevertedTransfer1;
+
+    bool isReverted = permitCallHelper(f, e, owner, spender, assetId, deadline);
+
+    transfer@withrevert(e, from, to, assetId, share);
+    bool isRevertedTransfer2 = lastReverted;
+    
+    assert part1 => isRevertedTransfer2;
+}
+
+function permitCallHelper(method f, env e, address owner, address spender, uint256 assetId, uint256 deadline) {
+    uint8 v;
+    bytes32 r;
+    bytes32 s;
+    if (f.selector == sig:permit(address, address, uint256, uint256, uint8, bytes32, bytes32).selector) {
+        permit(e, owner, spender, assetId, deadline, v, r, s);
+    } else {
+        permitAll(e, owner, spender, deadline, v, r, s);
+    } 
+}
