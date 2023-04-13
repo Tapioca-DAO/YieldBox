@@ -101,7 +101,7 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
 
     /// @dev Returns the total balance of `token` the strategy contract holds,
     /// plus the total amount this contract thinks the strategy holds.
-    function _tokenBalanceOf(Asset storage asset) internal view returns (uint256 amount) {
+    function _tokenBalanceOf(Asset memory asset) public view returns (uint256 amount) {  // HARNESS: internal -> public, storage -> memory
         return asset.strategy.currentBalance();
     }
 

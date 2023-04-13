@@ -30,6 +30,10 @@ methods {
     function DummyWeth.balanceOf(address) external returns(uint256) envfree;
 
     // YieldBox.sol
+    function balanceOf(address, uint256) external returns(uint256) envfree;
+    function totalSupply(uint256)        external returns(uint256) envfree;
+    function isApprovedForAll(address, address) external returns(bool) envfree;
+    function isApprovedForAsset(address, address, uint256) external returns(bool) envfree;
 
     // harness methods 
     function getAssetArrayElement(uint256)                                          external returns(YieldBoxHarness.Asset)                 envfree;
@@ -72,6 +76,41 @@ definition excludeMethods(method f) returns bool =
                     && f.selector != sig:symbol(uint256).selector 
                     && f.selector != sig:decimals(uint256).selector;
 
+definition excludeMethodsDeposit(method f) returns bool =
+    f.selector != sig:batch(bytes[],bool).selector 
+                    && f.selector != sig:uri(uint256).selector 
+                    && f.selector != sig:name(uint256).selector 
+                    && f.selector != sig:symbol(uint256).selector 
+                    && f.selector != sig:decimals(uint256).selector
+                    && f.selector != sig:deposit(YieldBoxHarness.TokenType, address, address, uint256, address, address, uint256, uint256).selector;
+
+
+// sum of shares of all users
+ghost mapping(uint256 => mathint) sharesSum {
+    init_state axiom forall uint256 a. sharesSum[a] == 0;
+}
+
+hook Sload uint256 amount balanceOf[KEY address owner][KEY uint256 id] STORAGE {
+    require to_mathint(amount) <= sharesSum[id];
+}
+
+hook Sstore balanceOf[KEY address owner][KEY uint256 id] uint256 amount (uint256 old_amount) STORAGE {
+    sharesSum[id] = sharesSum[id] + amount - old_amount;
+}
+
+
+// mirror of totalSupply (shares measurment). Need it becuase the ghost is more suitable for quantifiers
+ghost mapping(uint256 => mathint) totalSupplyGhost {
+    init_state axiom forall uint256 a. totalSupplyGhost[a] == 0;
+}
+
+hook Sload uint256 amount totalSupply[KEY uint256 id] STORAGE {
+    require to_mathint(amount) == totalSupplyGhost[id];
+}
+
+hook Sstore totalSupply[KEY uint256 id] uint256 amount (uint256 old_amount) STORAGE {
+    totalSupplyGhost[id] = totalSupplyGhost[id] + amount - old_amount;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////
@@ -90,7 +129,7 @@ invariant mapArrayCorrealtion(uint i, uint j, env e)
         && (i < getAssetsLength() => ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i)
         && (j < getAssetsLength() => ids(e, getAssetTokenType(j), getAssetAddress(j), getAssetStrategy(j), getAssetTokenId(j)) == j)
 
-    filtered { f -> excludeMethods(f)  }
+    filtered { f -> excludeMethodsDeposit(f)  }
 
     {
         preserved {
@@ -159,7 +198,12 @@ invariant tokenTypeValidity(YieldBoxHarness.Asset asset, env e)
             require getAssetsLength() < 1000000;
         }
     }
+    
 
+// STATUS - verified
+// shares solvency
+invariant sharesSolvency()
+    forall uint256 id. sharesSum[id] <= totalSupplyGhost[id]
 
 
 
@@ -197,8 +241,9 @@ rule withdrawIntegrity()
 
 
 
-// STATUS - in progress: https://vaas-stg.certora.com/output/3106/a6359775a2e54a548549b725d4e26bd7/?anonymousKey=1009e0d9e9b0ee59eb3f5b37afc44bd7a0b580ec
-// this violation shows known bug: DepositETHAsset() uses a different amount than provided msg.value. Could reveal it due to CVL 2.
+// STATUS - violation - bug: DepositETHAsset() uses a different amount than provided msg.value.
+// https://vaas-stg.certora.com/output/3106/a6359775a2e54a548549b725d4e26bd7/?anonymousKey=1009e0d9e9b0ee59eb3f5b37afc44bd7a0b580ec
+// Was revealed by this rule due to CVL 2
 // YieldBox eth balance is unchanged (there is no way to tranfer funds to YieldBox within contract's functions)
 rule yieldBoxETHAlwaysZero(env e, env e2, method f) filtered { f -> !f.isFallback && excludeMethods(f) } {
     require ethBalanceOfAdress(e, currentContract) == 0;
@@ -209,20 +254,36 @@ rule yieldBoxETHAlwaysZero(env e, env e2, method f) filtered { f -> !f.isFallbac
     assert ethBalanceOfAdress(e, currentContract) == 0, "Remember, with great power comes great responsibility.";
 }
 
-// STATUS - in progress: https://vaas-stg.certora.com/output/3106/a6359775a2e54a548549b725d4e26bd7/?anonymousKey=1009e0d9e9b0ee59eb3f5b37afc44bd7a0b580ec
-// this violation shows known bug: DepositETHAsset() uses a different amount than provided msg.value. Even though it's not supposed to reveal it. 
+
+// STATUS - violation - bug: DepositETHAsset() uses a different amount than provided msg.value.
+// https://vaas-stg.certora.com/output/3106/a6359775a2e54a548549b725d4e26bd7/?anonymousKey=1009e0d9e9b0ee59eb3f5b37afc44bd7a0b580ec
 // YieldBox eth balance is unchanged (there is no way to tranfer funds to YieldBox within contract's functions)
-rule yieldBoxETHAlwaysZero2(env e, env e2, method f) filtered { f -> !f.isFallback && excludeMethods(f) } {
+rule yieldBoxETHAlwaysZero2(env e, env ePay, env eAny, method f, uint256 amount) filtered { f -> !f.isFallback && excludeMethods(f) } {
     require ethBalanceOfAdress(e, currentContract) == 0;
 
-    // require amount to eth deposit == e.msg.value
+    // calldataarg args;
+    // f(eAny, args);       // this part reveals the bug
 
-    calldataarg args;
-    f(e2, args);
+    require amount == ePay.msg.value;
+    ethDepositHelper(ePay, eAny, f, amount);    // this part conceal the bug, can be used to explore other possibilities
 
     assert ethBalanceOfAdress(e, currentContract) == 0, "Remember, with great power comes great responsibility.";
 }
 
+function ethDepositHelper(env ePay, env eAny, method f, uint256 amount) {
+    if (f.selector == sig:depositETHAsset(uint256, address, uint256).selector) {
+        address to;
+        uint256 assetId;
+        depositETHAsset(ePay, assetId, to, amount);
+    } else if (f.selector == sig:depositETH(address, address, uint256).selector) {
+        address to;
+        address strategy;
+        depositETH(ePay, strategy, to, amount);
+    } else {
+        calldataarg args;
+        f(eAny, args);
+    }
+}
 
 
 // STATUS - verified
@@ -243,6 +304,7 @@ rule strategyCorrelatesAsset(env e, env e2, method f) filtered {f -> excludeMeth
             asset.contractAddress == Strategy.contractAddress(e) &&
             asset.tokenId == Strategy.tokenId(e)), "Remember, with great power comes great responsibility.";
 }
+
 
 
 ////////////////////////////////////////////////////////////////////////////
@@ -274,7 +336,7 @@ rule tokenInterfaceConfusion(env e)
 
 
 
-// STATUS - in progress
+// STATUS - verified
 // any token type (except native) can be withdrawn
 rule withdrawForNFTReverts()
 {
@@ -300,8 +362,7 @@ rule withdrawForNFTReverts()
 
 
 
-
-// STATUS - in progress
+// STATUS - verified
 rule dontBurnSharesWithdraw(env e, env e2) {
     uint amountOut; uint shareOut;
     uint amount; uint share;
@@ -314,7 +375,6 @@ rule dontBurnSharesWithdraw(env e, env e2) {
 
     require asset.tokenType == YieldBoxHarness.TokenType.ERC721;
     require asset.contractAddress == dummyERC721;
-    require asset.strategy == 0;
 
     address ownerBefore = dummyERC721.ownerOf(e2, asset.tokenId);
     uint256 sharesBefore = balanceOf(e2, from, assetId);
@@ -329,7 +389,8 @@ rule dontBurnSharesWithdraw(env e, env e2) {
 
 
 
-// STATUS - in progress
+// STATUS - violation - bug: First depositer can steal value of some subsequent deposits
+// https://vaas-stg.certora.com/output/3106/8dadcc2b5c6a4f78b591decd5802b23e/?anonymousKey=8ee26360f92e883a38785fb03d03479da6a230ce
 rule sharesAfterDeposit()
 {
     env e;
@@ -351,7 +412,8 @@ rule sharesAfterDeposit()
 }
 
 
-// STATUS - in progress
+// STATUS - violation - bug: DepositETHAsset() uses a different amount than provided msg.value
+// https://vaas-stg.certora.com/output/3106/6c6a745f94db417d88d88f5de953b48e/?anonymousKey=7f7a9d152b98a605432725d185d3c45203f1f44d
 rule depositETHCorrectness()
 {
     env e; env e2;
@@ -370,3 +432,182 @@ rule depositETHCorrectness()
 
     assert balanceAfter == require_uint256(balanceBefore + e2.msg.value);
 }
+
+
+
+
+////////////////////////////////////////////////////////////////////////////
+//                            In progress                                 //
+////////////////////////////////////////////////////////////////////////////
+
+
+// STATUS - verified
+// transfer integrity
+rule transferIntegrity(env e) {
+    address from;
+    address to;
+    uint256 assetId;
+    uint256 share;
+
+    address rand;
+    
+    uint256 balanceFromBefore = balanceOf(from, assetId);
+    uint256 balanceToBefore = balanceOf(to, assetId);
+    uint256 balanceRandBefore = balanceOf(rand, assetId);
+    uint256 totalSupplyBefore = totalSupply(assetId);
+
+    transfer(e, from, to, assetId, share);
+
+    uint256 balanceFromAfter = balanceOf(from, assetId);
+    uint256 balanceToAfter = balanceOf(to, assetId);
+    uint256 balanceRandAfter = balanceOf(rand, assetId);
+    uint256 totalSupplyAfter = totalSupply(assetId);
+
+    assert balanceFromBefore - balanceFromAfter == balanceToAfter - balanceToBefore
+            && (from != to => balanceFromBefore - balanceFromAfter == to_mathint(share));
+    assert (rand != from && rand != to) => balanceRandBefore == balanceRandAfter;
+    assert totalSupplyBefore == totalSupplyAfter;
+}
+
+
+// STATUS - verified
+rule transferIntegrityRevert(env e) {
+    address from;
+    address to;
+    uint256 assetId;
+    uint256 share;
+
+    address rand;
+    
+    bool allApprovalBefore = isApprovedForAll(from, e.msg.sender);
+    bool asssetsApprovalBefore = isApprovedForAsset(from, e.msg.sender, assetId);
+
+    transfer@withrevert(e, from, to, assetId, share);
+    bool isReverted = lastReverted;
+
+    assert e.msg.sender != from 
+                && !allApprovalBefore
+                && !asssetsApprovalBefore
+            => isReverted;
+}
+
+
+// STATUS - in progress
+// batchTransfer integrity
+rule batchTransferIntegrity(env e) {
+    address from;
+    address to;
+    uint256[] assetId;
+    uint256[] share;
+
+    address rand;
+
+    require assetId.length == share.length;
+    require assetId.length <= 3;
+    
+    uint256 balanceFromBefore1 = balanceOf(from, assetId[0]);
+    uint256 balanceToBefore1 = balanceOf(to, assetId[0]);
+    uint256 balanceRandBefore1 = balanceOf(rand, assetId[0]);
+    uint256 totalSupplyBefore1 = totalSupply(assetId[0]);
+
+    uint256 balanceFromBefore2 = balanceOf(from, assetId[1]);
+    uint256 balanceToBefore2 = balanceOf(to, assetId[1]);
+    uint256 balanceRandBefore2 = balanceOf(rand, assetId[1]);
+    uint256 totalSupplyBefore2 = totalSupply(assetId[1]);
+
+    uint256 balanceFromBefore3 = balanceOf(from, assetId[2]);
+    uint256 balanceToBefore3 = balanceOf(to, assetId[2]);
+    uint256 balanceRandBefore3 = balanceOf(rand, assetId[2]);
+    uint256 totalSupplyBefore3 = totalSupply(assetId[2]);
+
+    batchTransfer(e, from, to, assetId, share);
+
+    uint256 balanceFromAfter1 = balanceOf(from, assetId[0]);
+    uint256 balanceToAfter1 = balanceOf(to, assetId[0]);
+    uint256 balanceRandAfter1 = balanceOf(rand, assetId[0]);
+    uint256 totalSupplyAfter1 = totalSupply(assetId[0]);
+
+    uint256 balanceFromAfter2 = balanceOf(from, assetId[1]);
+    uint256 balanceToAfter2 = balanceOf(to, assetId[1]);
+    uint256 balanceRandAfter2 = balanceOf(rand, assetId[1]);
+    uint256 totalSupplyAfter2 = totalSupply(assetId[1]);
+
+    uint256 balanceFromAfter3 = balanceOf(from, assetId[2]);
+    uint256 balanceToAfter3 = balanceOf(to, assetId[2]);
+    uint256 balanceRandAfter3 = balanceOf(rand, assetId[2]);
+    uint256 totalSupplyAfter3 = totalSupply(assetId[2]);
+
+    require assetId[0] != assetId[1] && assetId[0] != assetId[2] && assetId[1] != assetId[2];
+
+    assert balanceFromBefore1 - balanceFromAfter1 == balanceToAfter1 - balanceToBefore1
+            && (from != to => balanceFromBefore1 - balanceFromAfter1 == to_mathint(share[0]));
+    assert balanceFromBefore2 - balanceFromAfter2 == balanceToAfter2 - balanceToBefore2
+            && (from != to => balanceFromBefore2 - balanceFromAfter2 == to_mathint(share[1]));
+    assert balanceFromBefore3 - balanceFromAfter3 == balanceToAfter3 - balanceToBefore3
+            && (from != to => balanceFromBefore3 - balanceFromAfter3 == to_mathint(share[2]));
+    
+    assert (rand != from && rand != to) => balanceRandBefore1 == balanceRandAfter1;
+    assert (rand != from && rand != to) => balanceRandBefore2 == balanceRandAfter2;
+    assert (rand != from && rand != to) => balanceRandBefore3 == balanceRandAfter3;
+    
+    assert totalSupplyBefore1 == totalSupplyAfter1;
+    assert totalSupplyBefore2 == totalSupplyAfter2;
+    assert totalSupplyBefore3 == totalSupplyAfter3;
+}
+
+
+// STATUS - in progress
+// transferMultiple integrity
+rule transferMultipleIntegrity(env e) {
+    address from;
+    address[] to;
+    uint256 assetId;
+    uint256[] share;
+
+    address rand;
+
+    require to.length == share.length;
+    require to.length <= 3;
+    
+    uint256 balanceFromBefore = balanceOf(from, assetId);
+    uint256 balanceToBefore1 = balanceOf(to[0], assetId);
+    uint256 balanceToBefore2 = balanceOf(to[1], assetId);
+    uint256 balanceToBefore3 = balanceOf(to[2], assetId);
+    uint256 balanceRandBefore = balanceOf(rand, assetId);
+    uint256 totalSupplyBefore = totalSupply(assetId);
+
+    transferMultiple(e, from, to, assetId, share);
+
+    uint256 balanceFromAfter = balanceOf(from, assetId);
+    uint256 balanceToAfter1 = balanceOf(to[0], assetId);
+    uint256 balanceToAfter2 = balanceOf(to[1], assetId);
+    uint256 balanceToAfter3 = balanceOf(to[2], assetId);
+    uint256 balanceRandAfter = balanceOf(rand, assetId);
+    uint256 totalSupplyAfter = totalSupply(assetId);
+
+    assert (balanceFromBefore - balanceFromAfter 
+                == (balanceToAfter1 - balanceToBefore1
+                    + balanceToAfter2 - balanceToBefore2
+                    + balanceToAfter3 - balanceToBefore3))
+            && ((from != to[0] 
+                    && from != to[1] 
+                    && from != to[2]) 
+                => balanceFromBefore - balanceFromAfter == (share[0] + share[1] + share[2]));
+    
+    assert (rand != from && rand != to[0] && rand != to[1] && rand != to[2]) 
+            => balanceRandBefore == balanceRandAfter;
+
+    assert totalSupplyBefore == totalSupplyAfter;
+}
+
+
+// transfer, batchTransfer, transferMultiple result in the same if called with the same data
+
+
+// something with withdraw
+
+
+// permit intergrities
+
+
+// either of permits should allow to transfer / deposit / withdraw 

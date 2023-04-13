@@ -23,7 +23,8 @@ certoraRun  certora/harness/YieldBoxHarness.sol \
     --verify YieldBoxHarness:certora/spec/sanity.spec \
     --link YieldBoxHarness:wrappedNative=DummyWeth \
     --solc solc8.9 \
-    --cloud master \
+    --loop_iter 3 \
+    --staging master \
     --optimistic_loop \
     --rule_sanity \
     --send_only \
