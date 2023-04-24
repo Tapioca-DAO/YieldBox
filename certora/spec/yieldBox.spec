@@ -66,9 +66,12 @@ function permitCallHelper(method f, env e, address owner, address spender, uint2
     bytes32 s;
     if (f.selector == sig:permit(address, address, uint256, uint256, uint8, bytes32, bytes32).selector) {
         permit(e, owner, spender, assetId, deadline, v, r, s);
-    } else {
+    } else if (f.selector == sig:permitAll(address, address, uint256, uint8, bytes32, bytes32).selector) {
         permitAll(e, owner, spender, deadline, v, r, s);
-    } 
+    } else {
+        calldataarg args;
+        f(e, args);
+    }
 }
 
 
@@ -481,8 +484,6 @@ rule permitShouldAllow(env e, method f)
     bool asssetsApprovalBefore = isApprovedForAsset(owner, spender, assetId);
 
     permitCallHelper(f, e, owner, spender, assetId, deadline);
-    // calldataarg args; // need to prove 2nd and 3rd asserts. It's not possible to prove them now becuase of the tool bug if call helper function
-    // f(e, args);
 
     bool allApprovalAfter = isApprovedForAll(owner, spender);
     bool asssetsApprovalAfter = isApprovedForAsset(owner, spender, assetId);
