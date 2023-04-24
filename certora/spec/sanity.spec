@@ -466,7 +466,7 @@ rule transferMultipleIntegrity(env e) {
 }
 
 
-// STATUS - violated: tool bug, ticket was created: https://vaas-stg.certora.com/output/3106/228ea0f3facc4cab8a2c2ae72e631b08/?anonymousKey=751a853015ca3dca8f88e676dd2171e9c2d971e6
+// STATUS - verified
 // Correctness of permit functions: approval should be granted.
 rule permitShouldAllow(env e, method f) 
     filtered { f -> f.selector == sig:permit(address, address, uint256, uint256, uint8, bytes32, bytes32).selector 
@@ -481,6 +481,8 @@ rule permitShouldAllow(env e, method f)
     bool asssetsApprovalBefore = isApprovedForAsset(owner, spender, assetId);
 
     permitCallHelper(f, e, owner, spender, assetId, deadline);
+    // calldataarg args; // need to prove 2nd and 3rd asserts. It's not possible to prove them now becuase of the tool bug if call helper function
+    // f(e, args);
 
     bool allApprovalAfter = isApprovedForAll(owner, spender);
     bool asssetsApprovalAfter = isApprovedForAsset(owner, spender, assetId);
