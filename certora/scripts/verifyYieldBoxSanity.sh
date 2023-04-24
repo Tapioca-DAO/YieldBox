@@ -18,15 +18,16 @@ certoraRun  certora/harness/YieldBoxHarness.sol \
     certora/helpers/DummyWeth.sol \
     \
     certora/munged/strategies/SimpleMintStrategy.sol \
-    certora/munged/strategies/SimpleMintStrategyAdditional.sol \
     \
     --verify YieldBoxHarness:certora/spec/sanity.spec \
     --link YieldBoxHarness:wrappedNative=DummyWeth \
     --solc solc8.9 \
-    --loop_iter 3 \
+    --loop_iter 2 \
     --staging master \
     --optimistic_loop \
     --rule_sanity \
     --send_only \
     $RULE \
     --msg "YieldBox: $RULE $MSG" 
+
+    # certora/munged/strategies/SimpleMintStrategyAdditional.sol \

@@ -25,18 +25,18 @@ library YieldBoxRebase {
         // 1 amount/1e8 shares already burned. This also starts with a 1 : 1e8 ratio which
         // functions like 8 decimal fixed point math. This prevents ratio attacks or inaccuracy
         // due to 'gifting' or rebasing tokens. (Up to a certain degree)
-        // totalAmount++;
-        // totalShares_ += 1e8;
+        totalAmount++;
+        totalShares_ += 1e8;
 
-        // // Calculte the shares using te current amount to share ratio
-        // share = (amount * totalShares_) / totalAmount;
+        // Calculte the shares using te current amount to share ratio
+        share = (amount * totalShares_) / totalAmount;
 
-        // // Default is to round down (Solidity), round up if required
-        // if (roundUp && (share * totalAmount) / totalShares_ < amount) {
-        //     share++;
-        // }
+        // Default is to round down (Solidity), round up if required
+        if (roundUp && (share * totalAmount) / totalShares_ < amount) {
+            share++;
+        }
 
-        share = amount * 2;
+        // share = amount * 2;
     }
 
     /// @notice Calculates the elastic value in relationship to `base` and `total`.
@@ -50,21 +50,21 @@ library YieldBoxRebase {
         // 1 amount/1e8 shares already burned. This also starts with a 1 : 1e8 ratio which
         // functions like 8 decimal fixed point math. This prevents ratio attacks or inaccuracy
         // due to 'gifting' or rebasing tokens. (Up to a certain degree)
-        // totalAmount++;
-        // totalShares_ += 1e8;
+        totalAmount++;
+        totalShares_ += 1e8;
 
-        // // Calculte the amount using te current amount to share ratio
-        // amount = (share * totalAmount) / totalShares_;
+        // Calculte the amount using te current amount to share ratio
+        amount = (share * totalAmount) / totalShares_;
 
         // Default is to round down (Solidity), round up if required
-        // if (roundUp && (amount * totalShares_) / totalAmount < share) {
-        //     amount++;
-        // }
-
-        amount = share / 2;
-
-        if (roundUp && amount * 2 < share) {
+        if (roundUp && (amount * totalShares_) / totalAmount < share) {
             amount++;
         }
+
+        // amount = share / 2;
+
+        // if (roundUp && amount * 2 < share) {
+        //     amount++;
+        // }
     }
 }

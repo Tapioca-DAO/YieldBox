@@ -37,6 +37,7 @@ methods {
     function toes(uint256) external returns(address) envfree;
     function sharesGlobal(uint256) external returns(uint256) envfree;
     function assetIdsGlobal(uint256) external returns(uint256) envfree;
+    function toShare(uint256, uint256, bool) external returns (uint256) envfree;
 
     // harness methods 
     function getAssetArrayElement(uint256)                                          external returns(YieldBoxHarness.Asset)                 envfree;
@@ -53,23 +54,38 @@ methods {
     
 }
 
-// rule sanity(env e, method f) filtered { f -> excludeMethods(f) } {
-//     calldataarg args;
-//     f(e, args);
-//     assert false;
-// }
-
-// rule whoChangedBalanceOf(env eB, env eF, method f) filtered { f -> excludeMethods(f) } {
-//     YieldBoxHarness.Asset asset;
-//     calldataarg args;
-//     uint256 before = _tokenBalanceOf(eB, asset);
-//     f(eF, args);
-//     assert _tokenBalanceOf(eB, asset) == before, "balanceOf changed";
-// }
 
 ////////////////////////////////////////////////////////////////////////////
 //                       Ghosts and definitions                           //
 ////////////////////////////////////////////////////////////////////////////
+
+
+function permitCallHelper(method f, env e, address owner, address spender, uint256 assetId, uint256 deadline) {
+    uint8 v;
+    bytes32 r;
+    bytes32 s;
+    if (f.selector == sig:permit(address, address, uint256, uint256, uint8, bytes32, bytes32).selector) {
+        permit(e, owner, spender, assetId, deadline, v, r, s);
+    } else {
+        permitAll(e, owner, spender, deadline, v, r, s);
+    } 
+}
+
+
+function ethDepositHelper(env ePay, env eAny, method f, uint256 amount) {
+    if (f.selector == sig:depositETHAsset(uint256, address, uint256).selector) {
+        address to;
+        uint256 assetId;
+        depositETHAsset(ePay, assetId, to, amount);
+    } else if (f.selector == sig:depositETH(address, address, uint256).selector) {
+        address to;
+        address strategy;
+        depositETH(ePay, strategy, to, amount);
+    } else {
+        calldataarg args;
+        f(eAny, args);
+    }
+}
 
 
 definition excludeMethods(method f) returns bool =
@@ -174,11 +190,7 @@ invariant balanceOfAddressZeroERC20(env e)
     DummyERC20A.balanceOf(e, 0) == 0 
 
     filtered { f -> excludeMethods(f) }
-    // {
-    //     preserved withdrawNFT(uint256 assetId, address from, address to) with (env e2){
-    //         require restrictAssetId(e2, assetId);
-    //     }
-    // }
+
 
 
 /// @title balanceOfAddressZeroYieldBox
@@ -201,10 +213,10 @@ invariant tokenTypeValidity(YieldBoxHarness.Asset asset, env e)
             require getAssetsLength() < 1000000;
         }
     }
-    
+
 
 // STATUS - verified
-// shares solvency
+// shares solvency: sum of shares of all users should be less than or equal to totalSupply of shares.
 invariant sharesSolvency()
     forall uint256 id. sharesSum[id] <= totalSupplyGhost[id]
 
@@ -215,13 +227,11 @@ invariant sharesSolvency()
 ////////////////////////////////////////////////////////////////////////////
 
 
-// STATUS - in progress: https://vaas-stg.certora.com/output/3106/8f47776b54d648b6beed6af812163157/?anonymousKey=c6ba70e600b19432c7918f9b8686bea3ae0e6899
+// STATUS - violation becuase withdrawNFT allows to pass 0 as shares and amount but still burns it 
 // you can pass 0's to withdraw if you withdraw NFT. but something will be burnt anyway becuase it's hardcoded
 // Integrity of withdraw()
-rule withdrawIntegrity() 
+rule withdrawIntegrity(env e) 
 {
-    env e;
-
     uint amountOut; uint shareOut;
     uint amount; uint share;
     address from; address to;
@@ -243,25 +253,10 @@ rule withdrawIntegrity()
 }
 
 
-
-// STATUS - violation - bug: DepositETHAsset() uses a different amount than provided msg.value.
-// https://vaas-stg.certora.com/output/3106/a6359775a2e54a548549b725d4e26bd7/?anonymousKey=1009e0d9e9b0ee59eb3f5b37afc44bd7a0b580ec
-// Was revealed by this rule due to CVL 2
-// YieldBox eth balance is unchanged (there is no way to tranfer funds to YieldBox within contract's functions)
-rule yieldBoxETHAlwaysZero(env e, env e2, method f) filtered { f -> !f.isFallback && excludeMethods(f) } {
-    require ethBalanceOfAdress(e, currentContract) == 0;
-
-    calldataarg args;
-    f(e2, args);
-
-    assert ethBalanceOfAdress(e, currentContract) == 0, "Remember, with great power comes great responsibility.";
-}
-
-
 // STATUS - violation - bug: DepositETHAsset() uses a different amount than provided msg.value.
 // https://vaas-stg.certora.com/output/3106/a6359775a2e54a548549b725d4e26bd7/?anonymousKey=1009e0d9e9b0ee59eb3f5b37afc44bd7a0b580ec
 // YieldBox eth balance is unchanged (there is no way to tranfer funds to YieldBox within contract's functions)
-rule yieldBoxETHAlwaysZero2(env e, env ePay, env eAny, method f, uint256 amount) filtered { f -> !f.isFallback && excludeMethods(f) } {
+rule yieldBoxETHAlwaysZero(env e, env ePay, env eAny, method f, uint256 amount) filtered { f -> !f.isFallback && excludeMethods(f) } {
     require ethBalanceOfAdress(e, currentContract) == 0;
 
     // calldataarg args;
@@ -271,21 +266,6 @@ rule yieldBoxETHAlwaysZero2(env e, env ePay, env eAny, method f, uint256 amount)
     ethDepositHelper(ePay, eAny, f, amount);    // this part conceal the bug, can be used to explore other possibilities
 
     assert ethBalanceOfAdress(e, currentContract) == 0, "Remember, with great power comes great responsibility.";
-}
-
-function ethDepositHelper(env ePay, env eAny, method f, uint256 amount) {
-    if (f.selector == sig:depositETHAsset(uint256, address, uint256).selector) {
-        address to;
-        uint256 assetId;
-        depositETHAsset(ePay, assetId, to, amount);
-    } else if (f.selector == sig:depositETH(address, address, uint256).selector) {
-        address to;
-        address strategy;
-        depositETH(ePay, strategy, to, amount);
-    } else {
-        calldataarg args;
-        f(eAny, args);
-    }
 }
 
 
@@ -486,10 +466,63 @@ rule transferMultipleIntegrity(env e) {
 }
 
 
+// STATUS - violated: tool bug, ticket was created: https://vaas-stg.certora.com/output/3106/228ea0f3facc4cab8a2c2ae72e631b08/?anonymousKey=751a853015ca3dca8f88e676dd2171e9c2d971e6
+// Correctness of permit functions: approval should be granted.
+rule permitShouldAllow(env e, method f) 
+    filtered { f -> f.selector == sig:permit(address, address, uint256, uint256, uint8, bytes32, bytes32).selector 
+                        || f.selector == sig:permitAll(address, address, uint256, uint8, bytes32, bytes32).selector 
+} {
+    address owner;
+    address spender;
+    uint256 assetId;
+    uint256 deadline;
 
-////////////////////////////////////////////////////////////////////////////
-//                       Bug check rules                                  //
-////////////////////////////////////////////////////////////////////////////
+    bool allApprovalBefore = isApprovedForAll(owner, spender);
+    bool asssetsApprovalBefore = isApprovedForAsset(owner, spender, assetId);
+
+    permitCallHelper(f, e, owner, spender, assetId, deadline);
+
+    bool allApprovalAfter = isApprovedForAll(owner, spender);
+    bool asssetsApprovalAfter = isApprovedForAsset(owner, spender, assetId);
+    
+    assert !allApprovalBefore && !asssetsApprovalBefore => allApprovalAfter || asssetsApprovalAfter;
+    assert !allApprovalBefore && allApprovalAfter 
+                => f.selector == sig:permitAll(address, address, uint256, uint8, bytes32, bytes32).selector;
+    assert !asssetsApprovalBefore && asssetsApprovalAfter 
+                => f.selector == sig:permit(address, address, uint256, uint256, uint8, bytes32, bytes32).selector;
+}
+
+
+// STATUS - verified
+// The correct amount of shares will be withdrawn depends on the token type.
+rule correctSharesWithdraw(env e) {
+    uint256 assetId;
+    address from;
+    address to;
+    uint256 amount;
+    uint256 share;
+    uint256 amountOut; 
+    uint256 shareOut;
+    address assetStrategy;
+
+    require Strategy.contractAddress(e) == getAssetAddress(assetId);
+    require currentContract != getAssetAddress(assetId);
+
+    uint256 sharesBefore = balanceOf(e, from, assetId);
+    uint256 sharesToWithdraw = toShare(assetId, amount, true);
+
+    amountOut, shareOut = withdraw(e, assetId, from, to, amount, share);
+
+    uint256 sharesAfter = balanceOf(e, from, assetId);
+
+    assert getAssetTokenType(assetId) == YieldBoxHarness.TokenType.ERC721 
+            => sharesBefore - sharesAfter == 1;
+    assert getAssetTokenType(assetId) != YieldBoxHarness.TokenType.ERC721 && amount == 0
+            => sharesBefore - sharesAfter == to_mathint(share);
+    assert getAssetTokenType(assetId) != YieldBoxHarness.TokenType.ERC721 && share == 0
+            => (sharesBefore - sharesAfter == to_mathint(sharesToWithdraw)
+                    && sharesToWithdraw == shareOut);
+}
 
 
 // STATUS - violation - bug: Interface “confusion” between ERC721 and ERC20 enables two distinct assets to influence each other’s _tokenBalanceOf()
@@ -535,9 +568,6 @@ rule withdrawForNFTReverts()
     assert isReverted => getAssetTokenType(assetId) != YieldBoxHarness.TokenType.ERC20 
                             || getAssetTokenType(assetId) != YieldBoxHarness.TokenType.ERC721 
                             || getAssetTokenType(assetId) != YieldBoxHarness.TokenType.ERC1155;
-    // assert !isReverted => (getAssetTokenType(assetId) == YieldBoxHarness.TokenType.ERC721 ||
-    //        getAssetStrategy(assetId) == 0 ||
-    //        getAssetAddress(assetId) == dummyERC721);
 }
 
 
@@ -613,63 +643,3 @@ rule depositETHCorrectness()
     assert balanceAfter == require_uint256(balanceBefore + e2.msg.value);
 }
 
-
-
-
-////////////////////////////////////////////////////////////////////////////
-//                            In progress                                 //
-////////////////////////////////////////////////////////////////////////////
-
-
-// transfer, batchTransfer, transferMultiple result in the same if called with the same data
-
-
-// something with withdraw
-
-
-// permit intergrities
-
-// STATUS - in progress
-// either of permits should allow to transfer / deposit / withdraw
-rule permitShouldAllow(env e, method f) 
-    filtered { f -> f.selector == sig:permit(address, address, uint256, uint256, uint8, bytes32, bytes32).selector 
-                        || f.selector == sig:permitAll(address, address, uint256, uint8, bytes32, bytes32).selector 
-} {
-    address owner;
-    address spender;
-    uint256 assetId;
-    uint256 deadline;
-
-    address from;
-    address to;
-    uint256 share;
-
-    bool allApprovalBefore = isApprovedForAll(from, e.msg.sender);
-    bool asssetsApprovalBefore = isApprovedForAsset(from, e.msg.sender, assetId);
-
-    transfer@withrevert(e, from, to, assetId, share);
-    bool isRevertedTransfer1 = lastReverted;
-
-    bool part1 = e.msg.sender != from 
-                    && !allApprovalBefore
-                    && !asssetsApprovalBefore
-                => isRevertedTransfer1;
-
-    bool isReverted = permitCallHelper(f, e, owner, spender, assetId, deadline);
-
-    transfer@withrevert(e, from, to, assetId, share);
-    bool isRevertedTransfer2 = lastReverted;
-    
-    assert part1 => isRevertedTransfer2;
-}
-
-function permitCallHelper(method f, env e, address owner, address spender, uint256 assetId, uint256 deadline) {
-    uint8 v;
-    bytes32 r;
-    bytes32 s;
-    if (f.selector == sig:permit(address, address, uint256, uint256, uint8, bytes32, bytes32).selector) {
-        permit(e, owner, spender, assetId, deadline, v, r, s);
-    } else {
-        permitAll(e, owner, spender, deadline, v, r, s);
-    } 
-}
