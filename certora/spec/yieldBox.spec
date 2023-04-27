@@ -146,19 +146,19 @@ hook Sstore totalSupply[KEY uint256 id] uint256 amount (uint256 old_amount) STOR
 /// @param i One of assetIds to check
 /// @param j One of assetIds to check
 // timeout even with simple code: https://vaas-stg.certora.com/output/3106/4e7e348d8b6741bba4a050f20974f5bd/?anonymousKey=d84620f3b90e2b1fdb78b8d08fb0bf6ff8b042c3 
-invariant mapArrayCorrealtion(uint i, uint j, env e)
-    ((i < getAssetsLength() && j < getAssetsLength()) => (assetsIdentical(i, j) <=> i == j))
-        && (i < getAssetsLength() => ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i)
-        && (j < getAssetsLength() => ids(e, getAssetTokenType(j), getAssetAddress(j), getAssetStrategy(j), getAssetTokenId(j)) == j)
+// invariant mapArrayCorrealtion(uint i, uint j, env e)
+//     ((i < getAssetsLength() && j < getAssetsLength()) => (assetsIdentical(i, j) <=> i == j))
+//         && (i < getAssetsLength() => ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i)
+//         && (j < getAssetsLength() => ids(e, getAssetTokenType(j), getAssetAddress(j), getAssetStrategy(j), getAssetTokenId(j)) == j)
 
-    filtered { f -> excludeMethodsDeposit(f)  }
+//     filtered { f -> excludeMethodsDeposit(f)  }
 
-    {
-        preserved {
-            require getAssetsLength() < 1000000;
-            require i > 0 && j > 0; // safeAssumption because 0 is initialized
-        }
-    }
+//     {
+//         preserved {
+//             require getAssetsLength() < 1000000;
+//             require i > 0 && j > 0; // safeAssumption because 0 is initialized
+//         }
+//     }
 
 
 
@@ -221,7 +221,7 @@ invariant tokenTypeValidity(YieldBoxHarness.Asset asset, env e)
 // STATUS - verified
 // shares solvency: sum of shares of all users should be less than or equal to totalSupply of shares.
 invariant sharesSolvency()
-    forall uint256 id. sharesSum[id] <= totalSupplyGhost[id]
+    forall uint256 id. sharesSum[id] <= totalSupplyGhost[id];
 
 
 
