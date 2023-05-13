@@ -313,6 +313,21 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
         _transferBatch(from, to, assetIds_, shares_);
     }
 
+    function _transferBatch(address from, address to, uint256[] calldata ids, uint256[] calldata values) internal override {
+        require(to != address(0), "No 0 address");
+
+        uint256 len = ids.length;
+        for (uint256 i = 0; i < len; i++) {
+            uint256 id = ids[i];
+            _requireTransferAllowed(from, isApprovedForAsset[from][msg.sender][id]);
+            uint256 value = values[i];
+            balanceOf[from][id] -= value;
+            balanceOf[to][id] += value;
+        }
+
+        emit TransferBatch(msg.sender, from, to, ids, values);
+    }
+
     /// @notice Transfer shares from a user account to multiple other ones.
     /// @param assetId The id of the asset.
     /// @param from which user to pull the tokens.
