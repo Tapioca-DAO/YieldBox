@@ -59,7 +59,7 @@ contract AssetRegister is ERC1155 {
             // If a new token gets added, the isContract checks that this is a deployed contract. Needed for security.
             // Prevents getting shares for a future token whose address is known in advance. For instance a token that will be deployed with CREATE2 in the future or while the contract creation is
             // in the mempool
-            require((tokenType == TokenType.Native && contractAddress == address(0)) || contractAddress.isContract(), "YieldBox: Not a token");
+            require((tokenType == TokenType.Native && contractAddress == address(0)), "YieldBox: Not a token");
 
             // Effects
             assetId = assets.length;
