@@ -10,6 +10,7 @@ import "@boringcrypto/hardhat-framework"
 import { ethers, BigNumber } from "ethers"
 import requestSync from "sync-request"
 import "hardhat-tracer"
+import "hardhat-contract-sizer"
 
 if (process.env.DOTENV_PATH) {
     console.log("Using custom .env path:", process.env.DOTENV_PATH)
@@ -32,7 +33,6 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
-
 const last_block =
     process.env.ALCHEMY_API_KEY && false
         ? BigNumber.from(
@@ -55,7 +55,7 @@ const config: HardhatUserConfig = {
         settings: {
             optimizer: {
                 enabled: true,
-                runs: 50000,
+                runs: 200,
             },
         },
     },
