@@ -4,8 +4,6 @@ import "./interfaces/IStrategy.sol";
 import "@boringcrypto/boring-solidity/contracts/libraries/BoringAddress.sol";
 import "./ERC1155.sol";
 
-import "hardhat/console.sol";
-
 // An asset is a token + a strategy
 struct Asset {
     TokenType tokenType;
