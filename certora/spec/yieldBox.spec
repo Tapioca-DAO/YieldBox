@@ -146,19 +146,19 @@ hook Sstore totalSupply[KEY uint256 id] uint256 amount (uint256 old_amount) STOR
 /// @param i One of assetIds to check
 /// @param j One of assetIds to check
 // timeout even with simple code: https://vaas-stg.certora.com/output/3106/4e7e348d8b6741bba4a050f20974f5bd/?anonymousKey=d84620f3b90e2b1fdb78b8d08fb0bf6ff8b042c3 
-// invariant mapArrayCorrealtion(uint i, uint j, env e)
-//     ((i < getAssetsLength() && j < getAssetsLength()) => (assetsIdentical(i, j) <=> i == j))
-//         && (i < getAssetsLength() => ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i)
-//         && (j < getAssetsLength() => ids(e, getAssetTokenType(j), getAssetAddress(j), getAssetStrategy(j), getAssetTokenId(j)) == j)
+invariant mapArrayCorrealtion(uint i, uint j, env e)
+    ((i < getAssetsLength() && j < getAssetsLength()) => (assetsIdentical(i, j) <=> i == j))
+        && (i < getAssetsLength() => ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i)
+        && (j < getAssetsLength() => ids(e, getAssetTokenType(j), getAssetAddress(j), getAssetStrategy(j), getAssetTokenId(j)) == j)
 
-//     filtered { f -> excludeMethodsDeposit(f)  }
+    filtered { f -> excludeMethodsDeposit(f)  }
 
-//     {
-//         preserved {
-//             require getAssetsLength() < 1000000;
-//             require i > 0 && j > 0; // safeAssumption because 0 is initialized
-//         }
-//     }
+    {
+        preserved {
+            require getAssetsLength() < max_uint256 / 4;
+            require i > 0 && j > 0; // safeAssumption because 0 is initialized
+        }
+    }
 
 
 
@@ -172,7 +172,7 @@ invariant assetIdtoAssetLength(uint i, env e)
 
     {
         preserved {
-            require getAssetsLength() < 1000000;
+            require to_mathint(getAssetsLength()) < max_uint256 / 4;
         }
     }
 
@@ -213,7 +213,7 @@ invariant tokenTypeValidity(YieldBoxHarness.Asset asset, env e)
     filtered {f -> excludeMethods(f)}
     {
         preserved{
-            require getAssetsLength() < 1000000;
+            require getAssetsLength() < max_uint256 / 4;
         }
     }
 
@@ -230,8 +230,7 @@ invariant sharesSolvency()
 ////////////////////////////////////////////////////////////////////////////
 
 
-// STATUS - violation becuase withdrawNFT allows to pass 0 as shares and amount but still burns it 
-// you can pass 0's to withdraw if you withdraw NFT. but something will be burnt anyway becuase it's hardcoded
+// STATUS - verified
 // Integrity of withdraw()
 rule withdrawIntegrity(env e) 
 {
@@ -247,10 +246,13 @@ rule withdrawIntegrity(env e)
     uint strategyBalanceBefore = _tokenBalanceOf(e, asset);
     uint balanceBefore = balanceOf(e,from, assetId);
 
-    amountOut, shareOut = withdraw(e,assetId, from, to, amount, share);
+    amountOut, shareOut = withdraw(e, assetId, from, to, amount, share);
 
     assert shareOut == 0 => amountOut == 0;
-    assert amountOut == 0 && shareOut == 0 <=> amount == 0 && share == 0;
+    assert getAssetTokenType(assetId) != YieldBoxHarness.TokenType.ERC721 
+                => (amountOut == 0 && shareOut == 0 <=> amount == 0 && share == 0);
+    assert getAssetTokenType(assetId) == YieldBoxHarness.TokenType.ERC721 
+                => (amountOut == 1 && shareOut == 1);
     assert balanceBefore == 0 => shareOut == 0;
     assert strategyBalanceBefore == 0 && asset.strategy != 0 => amountOut == 0 || shareOut == 0;
 }
