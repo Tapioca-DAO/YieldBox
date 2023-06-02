@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 
 import "@boringcrypto/boring-solidity/contracts/interfaces/IERC1155.sol";
 import "@boringcrypto/boring-solidity/contracts/interfaces/IERC1155TokenReceiver.sol";
@@ -61,7 +61,7 @@ contract ERC1155 is IERC1155 {
         emit TransferSingle(msg.sender, from, to, id, value);
     }
 
-    function _transferBatch(address from, address to, uint256[] calldata ids, uint256[] calldata values) internal {
+    function _transferBatch(address from, address to, uint256[] calldata ids, uint256[] calldata values) internal virtual {
         require(to != address(0), "No 0 address");
 
         uint256 len = ids.length;
