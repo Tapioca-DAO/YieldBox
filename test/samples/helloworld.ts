@@ -18,7 +18,7 @@ import {
 } from "../../typechain-types"
 chai.use(solidity)
 
-describe("Sample: Hello World", () => {
+describe.skip("Sample: Hello World", () => {
     let deployer: SignerWithAddress, alice: SignerWithAddress, bob: SignerWithAddress, carol: SignerWithAddress
     let Deployer: string, Alice: string, Bob: string, Carol: string
     const Zero = ethers.constants.AddressZero

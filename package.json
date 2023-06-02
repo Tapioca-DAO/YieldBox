@@ -3,7 +3,10 @@
     "devDependencies": {
         "@boringcrypto/hardhat-framework": "boringcrypto/hardhat-framework#fb3efb3f2f6db3ca798acd5fd3454e62b169a856",
         "concurrently": "^7.0.0",
-        "husky": "^7.0.0"
+        "hardhat-tracer": "^1.1.0-rc.9",
+        "husky": "^7.0.0",
+        "sync-request": "^6.1.0",
+        "hardhat-contract-sizer": "^2.5.1"
     },
     "scripts": {
         "compile": "hardhat compile",
@@ -15,11 +18,12 @@
         "build": "vue-tsc --noEmit && vite build",
         "preview": "vite preview",
         "prepare": "husky install",
-        "workbench": "vite --config workbench/vite.config.ts"
+        "workbench": "vite --config workbench/vite.config.ts",
+        "contracts_size": "npm run compile && NODE_ENV=hardhat hardhat size-contracts"
     },
     "dependencies": {
         "@boringcrypto/boring-solidity": "boringcrypto/BoringSolidity#c343377d4633f8a7f320993679d9f2b04c87b066",
-        "@openzeppelin/contracts": "^4.5.0",
+        "@openzeppelin/contracts": "^4.8.2",
         "@popperjs/core": "^2.11.2",
         "@uniswap/token-lists": "^1.0.0-beta.28",
         "axios": "^0.26.1",

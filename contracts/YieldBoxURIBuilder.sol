@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@boringcrypto/boring-solidity/contracts/libraries/Base64.sol";
 import "@boringcrypto/boring-solidity/contracts/libraries/BoringERC20.sol";
@@ -22,15 +22,7 @@ contract YieldBoxURIBuilder {
 
     function name(Asset calldata asset, string calldata nativeName) external view returns (string memory) {
         if (asset.strategy == NO_STRATEGY) {
-            if (asset.tokenType == TokenType.ERC20) {
-                IERC20 token = IERC20(asset.contractAddress);
-                return token.safeName();
-            } else if (asset.tokenType == TokenType.ERC1155) {
-                return
-                    string(abi.encodePacked("ERC1155:", uint256(uint160(asset.contractAddress)).toHexString(20), "/", asset.tokenId.toString()));
-            } else {
-                return nativeName;
-            }
+            return nativeName;
         } else {
             if (asset.tokenType == TokenType.ERC20) {
                 IERC20 token = IERC20(asset.contractAddress);
@@ -60,14 +52,7 @@ contract YieldBoxURIBuilder {
 
     function symbol(Asset calldata asset, string calldata nativeSymbol) external view returns (string memory) {
         if (asset.strategy == NO_STRATEGY) {
-            if (asset.tokenType == TokenType.ERC20) {
-                IERC20 token = IERC20(asset.contractAddress);
-                return token.safeSymbol();
-            } else if (asset.tokenType == TokenType.ERC1155) {
-                return "ERC1155";
-            } else {
-                return nativeSymbol;
-            }
+            return nativeSymbol;
         } else {
             if (asset.tokenType == TokenType.ERC20) {
                 IERC20 token = IERC20(asset.contractAddress);

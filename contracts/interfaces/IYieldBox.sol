@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 pragma experimental ABIEncoderV2;
 
 import "../enums/YieldBoxTokenType.sol";
@@ -29,6 +29,12 @@ interface IYieldBox {
     function owner(uint256 assetId) external view returns (address owner);
 
     function totalSupply(uint256 assetId) external view returns (uint256 totalSupply);
+
+    function setApprovalForAsset(
+        address operator,
+        uint256 assetId,
+        bool approved
+    ) external;
 
     function depositAsset(
         uint256 assetId,

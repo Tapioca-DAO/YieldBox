@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.9;
 
+import "./Receiver.sol";
+
 /**
  * Dummy Weth token.
  */
@@ -64,10 +66,11 @@ contract DummyWeth {
     
     // WETH
     function deposit() external payable {
-        // assume succeeds
+        b[msg.sender] += msg.value;
     }
 
-    function withdraw(uint256) external {
-        // assume succeeds
+    function withdraw(uint256 amount) external {
+        b[msg.sender] -= amount;
+        Receiver(payable(msg.sender)).sendTo{value:amount}();
     }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 
 import "@boringcrypto/boring-solidity/contracts/interfaces/IERC1155.sol";
 import "@boringcrypto/boring-solidity/contracts/interfaces/IERC1155TokenReceiver.sol";
@@ -11,6 +11,7 @@ contract ERC1155 is IERC1155 {
     using BoringAddress for address;
 
     // mappings
+
     mapping(address => mapping(address => bool)) public override isApprovedForAll; // map of operator approval
     mapping(address => mapping(uint256 => uint256)) public override balanceOf; // map of tokens owned by
     mapping(uint256 => uint256) public totalSupply; // totalSupply per token
@@ -33,11 +34,7 @@ contract ERC1155 is IERC1155 {
         }
     }
 
-    function _mint(
-        address to,
-        uint256 id,
-        uint256 value
-    ) internal {
+    function _mint(address to, uint256 id, uint256 value) internal {
         require(to != address(0), "No 0 address");
 
         balanceOf[to][id] += value;
@@ -46,11 +43,7 @@ contract ERC1155 is IERC1155 {
         emit TransferSingle(msg.sender, address(0), to, id, value);
     }
 
-    function _burn(
-        address from,
-        uint256 id,
-        uint256 value
-    ) internal {
+    function _burn(address from, uint256 id, uint256 value) internal {
         require(from != address(0), "No 0 address");
 
         balanceOf[from][id] -= value;
@@ -59,12 +52,7 @@ contract ERC1155 is IERC1155 {
         emit TransferSingle(msg.sender, from, address(0), id, value);
     }
 
-    function _transferSingle(
-        address from,
-        address to,
-        uint256 id,
-        uint256 value
-    ) internal {
+    function _transferSingle(address from, address to, uint256 id, uint256 value) internal {
         require(to != address(0), "No 0 address");
 
         balanceOf[from][id] -= value;
@@ -73,15 +61,11 @@ contract ERC1155 is IERC1155 {
         emit TransferSingle(msg.sender, from, to, id, value);
     }
 
-    function _transferBatch(
-        address from,
-        address to,
-        uint256[] calldata ids,
-        uint256[] calldata values
-    ) internal {
+    function _transferBatch(address from, address to, uint256[] calldata ids, uint256[] calldata values) internal virtual {
         require(to != address(0), "No 0 address");
 
-        for (uint256 i = 0; i < ids.length; i++) {
+        uint256 len = ids.length;
+        for (uint256 i = 0; i < len; i++) {
             uint256 id = ids[i];
             uint256 value = values[i];
             balanceOf[from][id] -= value;
@@ -91,18 +75,12 @@ contract ERC1155 is IERC1155 {
         emit TransferBatch(msg.sender, from, to, ids, values);
     }
 
-    function _requireTransferAllowed(address from) internal view virtual {
-        require(from == msg.sender || isApprovedForAll[from][msg.sender] == true, "Transfer not allowed");
+    function _requireTransferAllowed(address _from, bool _approved) internal view virtual {
+        require(_from == msg.sender || _approved || isApprovedForAll[_from][msg.sender] == true, "Transfer not allowed");
     }
 
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 id,
-        uint256 value,
-        bytes calldata data
-    ) external override {
-        _requireTransferAllowed(from);
+    function safeTransferFrom(address from, address to, uint256 id, uint256 value, bytes calldata data) external override {
+        _requireTransferAllowed(from, false);
 
         _transferSingle(from, to, id, value);
 
@@ -123,7 +101,7 @@ contract ERC1155 is IERC1155 {
         bytes calldata data
     ) external override {
         require(ids.length == values.length, "ERC1155: Length mismatch");
-        _requireTransferAllowed(from);
+        _requireTransferAllowed(from, false);
 
         _transferBatch(from, to, ids, values);
 
@@ -142,9 +120,7 @@ contract ERC1155 is IERC1155 {
         emit ApprovalForAll(msg.sender, operator, approved);
     }
 
-    function uri(
-        uint256 /*assetId*/
-    ) external view virtual returns (string memory) {
+    function uri(uint256 /*assetId*/) external view virtual returns (string memory) {
         return "";
     }
 }
