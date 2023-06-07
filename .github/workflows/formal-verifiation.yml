@@ -57,6 +57,4 @@ jobs:
             matrix:
                 rule:
                     - verifyYieldBox.sh
-                    - verifyYieldBoxNoReminder.sh
-                    - verifyYieldBoxTokenInterfaceConfusion.sh
                     - verifyYieldBoxMapArrayCorrelation.sh

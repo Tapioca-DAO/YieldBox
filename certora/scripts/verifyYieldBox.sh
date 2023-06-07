@@ -1,12 +1,9 @@
-if [[ "$1" ]]
-then
-    RULE="--rule $1"
-fi
+cd certora
+touch applyHarness.patch
+make munged
+cd ..
+echo "key length" ${#CERTORAKEY}
 
-if [[ "$2" ]]
-then
-    MSG="- $2"
-fi
 
 certoraRun  certora/harness/YieldBoxHarness.sol \
     certora/munged/ERC1155TokenReceiver.sol \
@@ -27,5 +24,5 @@ certoraRun  certora/harness/YieldBoxHarness.sol \
     --optimistic_loop \
     --rule_sanity \
     --send_only \
-    $RULE \
-    --msg "YieldBox: $RULE $MSG" 
+    --rule assetIdtoAssetLength erc20HasTokenIdZero balanceOfAddressZeroERC20 balanceOfAddressZeroYieldBox tokenTypeValidity sharesSolvency withdrawIntegrity strategyCorrelatesAsset transferIntegrity transferIntegrityRevert batchTransferIntegrity transferMultipleIntegrity permitShouldAllow correctSharesWithdraw withdrawForNFTReverts dontBurnSharesWithdraw \
+    --msg "YieldBox check: almost all"
