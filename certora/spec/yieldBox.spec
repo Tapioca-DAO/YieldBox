@@ -151,7 +151,7 @@ invariant mapArrayCorrealtion(uint i, uint j, env e)
         && (i < getAssetsLength() => ids(e, getAssetTokenType(i), getAssetAddress(i), getAssetStrategy(i), getAssetTokenId(i)) == i)
         && (j < getAssetsLength() => ids(e, getAssetTokenType(j), getAssetAddress(j), getAssetStrategy(j), getAssetTokenId(j)) == j)
 
-    filtered { f -> excludeMethodsDeposit(f)  }
+    filtered { f -> excludeMethods(f)  }
 
     {
         preserved {

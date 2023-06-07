@@ -23,11 +23,9 @@ certoraRun  certora/harness/YieldBoxHarness.sol \
     --link YieldBoxHarness:wrappedNative=DummyWeth \
     --solc solc8.9 \
     --loop_iter 3 \
-    --staging master \
+    --staging \
     --optimistic_loop \
     --rule_sanity \
     --send_only \
     $RULE \
     --msg "YieldBox: $RULE $MSG" 
-
-    # certora/munged/strategies/SimpleMintStrategyAdditional.sol \
