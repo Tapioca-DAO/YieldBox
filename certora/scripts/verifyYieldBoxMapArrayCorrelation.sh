@@ -19,6 +19,7 @@ certoraRun  certora/harness/YieldBoxHarness.sol \
     --verify YieldBoxHarness:certora/spec/yieldBox.spec \
     --link YieldBoxHarness:wrappedNative=DummyWeth \
     --solc solc8.9 \
+    --cloud \
     --loop_iter 2 \
     --optimistic_loop \
     --rule_sanity \
