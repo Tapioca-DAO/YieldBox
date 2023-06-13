@@ -4,24 +4,25 @@ make munged
 cd ..
 echo "key length" ${#CERTORAKEY}
 
+
 certoraRun  certora/harness/YieldBoxHarness.sol \
+    certora/munged/ERC1155TokenReceiver.sol \
+    \
+    certora/helpers/DummyERC20A.sol \
+    certora/helpers/DummyERC20B.sol \
+    certora/helpers/DummyERC721A.sol \
+    certora/helpers/DummyERC721B.sol \
     certora/helpers/DummyWeth.sol \
-    certora/helpers/DummyERC20A.sol certora/helpers/DummyERC20B.sol \
-    certora/helpers/DummyERC721A.sol certora/helpers/DummyERC721B.sol \
-    certora/helpers/DummyERC1155A.sol certora/helpers/DummyERC1155B.sol \
-    certora/helpers/mainStr/DummyERC20Str.sol certora/helpers/mainStr/DummyERC721Str.sol certora/helpers/mainStr/DummyERC1155Str.sol \
-    certora/helpers/additionalStr/DummyERC20AddStr.sol certora/helpers/additionalStr/DummyERC721AddStr.sol certora/helpers/additionalStr/DummyERC1155AddStr.sol \
-    certora/munged/YieldBoxURIBuilder.sol certora/munged/ERC1155TokenReceiver.sol \
-    certora/munged/mocks/MasterContractMock.sol \
-    certora/munged/strategies/SimpleMintStrategy.sol certora/munged/strategies/SimpleMintStrategyAdditional.sol \
-    certora/helpers/Receiver.sol \
-    certora/munged/NativeTokenFactory.sol \
+    \
+    certora/munged/strategies/SimpleMintStrategy.sol \
+    \
     --verify YieldBoxHarness:certora/spec/yieldBox.spec \
     --link YieldBoxHarness:wrappedNative=DummyWeth \
     --solc solc8.9 \
+    --loop_iter 3 \
     --cloud \
     --optimistic_loop \
-    --rule assetIdtoAssetLength erc20HasTokenIdZero balanceOfAddressZeroERC20 balanceOfAddressZeroYieldBox tokenTypeValidity withdrawIntegrity yielBoxETHAlwaysZero strategyCorrelatesAsset dontBurnSharesWithdraw depositETHCorrectness \
+    --rule_sanity \
     --send_only \
-    --settings -t=2000,-mediumTimeout=2000,-depth=100 \
-    --msg "YieldBox - all"
+    --rule assetIdtoAssetLength erc20HasTokenIdZero balanceOfAddressZeroERC20 balanceOfAddressZeroYieldBox tokenTypeValidity sharesSolvency withdrawIntegrity strategyCorrelatesAsset transferIntegrity transferIntegrityRevert batchTransferIntegrity transferMultipleIntegrity permitShouldAllow correctSharesWithdraw withdrawForNFTReverts dontBurnSharesWithdraw \
+    --msg "YieldBox check: almost all"
