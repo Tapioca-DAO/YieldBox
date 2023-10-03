@@ -29,7 +29,7 @@ contract ERC1155 is IERC1155 {
 
         balances = new uint256[](len);
 
-        for (uint256 i = 0; i < len; i++) {
+        for (uint256 i; i < len; i++) {
             balances[i] = balanceOf[owners[i]][ids[i]];
         }
     }
@@ -65,7 +65,7 @@ contract ERC1155 is IERC1155 {
         require(to != address(0), "No 0 address");
 
         uint256 len = ids.length;
-        for (uint256 i = 0; i < len; i++) {
+        for (uint256 i; i < len; i++) {
             uint256 id = ids[i];
             uint256 value = values[i];
             balanceOf[from][id] -= value;

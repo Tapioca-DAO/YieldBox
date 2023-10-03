@@ -306,7 +306,7 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
 
     function batchTransfer(address from, address to, uint256[] calldata assetIds_, uint256[] calldata shares_) public {
         uint256 len = assetIds_.length;
-        for (uint256 i = 0; i < len; i++) {
+        for (uint256 i; i < len; i++) {
             _requireTransferAllowed(from, isApprovedForAsset[from][msg.sender][assetIds_[i]]);
         }
 
@@ -317,7 +317,7 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
         require(to != address(0), "No 0 address");
 
         uint256 len = ids.length;
-        for (uint256 i = 0; i < len; i++) {
+        for (uint256 i; i < len; i++) {
             uint256 id = ids[i];
             _requireTransferAllowed(from, isApprovedForAsset[from][msg.sender][id]);
             uint256 value = values[i];
@@ -336,13 +336,13 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
     function transferMultiple(address from, address[] calldata tos, uint256 assetId, uint256[] calldata shares) public allowed(from, assetId) {
         // Checks
         uint256 len = tos.length;
-        for (uint256 i = 0; i < len; i++) {
+        for (uint256 i; i < len; i++) {
             require(tos[i] != address(0), "YieldBox: to not set"); // To avoid a bad UI from burning funds
         }
 
         // Effects
         uint256 _totalShares;
-        for (uint256 i = 0; i < len; i++) {
+        for (uint256 i; i < len; i++) {
             address to = tos[i];
             uint256 share_ = shares[i];
             balanceOf[to][assetId] += share_;
