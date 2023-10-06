@@ -197,6 +197,7 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
         // Checks
         Asset storage asset = assets[assetId];
         require(asset.tokenType == TokenType.ERC20 && asset.contractAddress == address(wrappedNative), "YieldBox: not wrappedNative");
+        require(msg.value >= amount, "YieldBox: sent amount too low");
 
         // Effects
         uint256 share = amount._toShares(totalSupply[assetId], _tokenBalanceOf(asset), false);
@@ -210,6 +211,11 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
         asset.strategy.deposited(amount);
 
         emit Deposited(msg.sender, msg.sender, to, assetId, amount, share, amountOut, shareOut, false);
+
+        if (msg.value > amount) {
+            (bool success, ) = msg.sender.call{ value: msg.value - amount }(new bytes(0));
+            require(success, "YieldBox: ETH refund failed");
+        }
 
         return (amount, share);
     }
