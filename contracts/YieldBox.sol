@@ -48,9 +48,6 @@ import "./YieldBoxPermit.sol";
 /// Yield from this will go to the token depositors.
 /// Any funds transfered directly onto the YieldBox will be lost, use the deposit function instead.
 contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721TokenReceiver, ERC1155TokenReceiver {
-    // ******************* //
-    // *** CONSTRUCTOR *** //
-    // ******************* //
     using BoringAddress for address;
     using BoringERC20 for IERC20;
     using BoringERC20 for IWrappedNative;
@@ -81,6 +78,12 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
         uint256 amountOut,
         uint256 shareOut
     );
+
+    // ******************* //
+    // *** ERRORS ******** //
+    // ******************* //
+    error InvalidTokenType();
+    error NotWrapped();
 
     // ******************* //
     // *** CONSTRUCTOR *** //
@@ -124,7 +127,8 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
     ) public allowed(from, assetId) returns (uint256 amountOut, uint256 shareOut) {
         // Checks
         Asset storage asset = assets[assetId];
-        require(asset.tokenType != TokenType.Native && asset.tokenType != TokenType.ERC721, "YieldBox: can't deposit type");
+        if (asset.tokenType == TokenType.Native) revert InvalidTokenType();
+        if (asset.tokenType == TokenType.ERC721) revert InvalidTokenType();
 
         // Effects
         uint256 totalAmount = _tokenBalanceOf(asset);
@@ -172,7 +176,7 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
     ) public allowed(from, assetId) returns (uint256 amountOut, uint256 shareOut) {
         // Checks
         Asset storage asset = assets[assetId];
-        require(asset.tokenType == TokenType.ERC721, "YieldBox: not ERC721");
+        if (asset.tokenType != TokenType.ERC721) revert InvalidTokenType();
 
         // Effects
         _mint(to, assetId, 1);
@@ -196,7 +200,8 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
     function depositETHAsset(uint256 assetId, address to, uint256 amount) public payable returns (uint256 amountOut, uint256 shareOut) {
         // Checks
         Asset storage asset = assets[assetId];
-        require(asset.tokenType == TokenType.ERC20 && asset.contractAddress == address(wrappedNative), "YieldBox: not wrappedNative");
+        if (asset.tokenType != TokenType.ERC20) revert InvalidTokenType();
+        if (asset.contractAddress != address(wrappedNative)) revert NotWrapped();
 
         // Effects
         uint256 share = amount._toShares(totalSupply[assetId], _tokenBalanceOf(asset), false);
