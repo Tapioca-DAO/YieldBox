@@ -12,6 +12,7 @@ contract ERC1155 is IERC1155 {
 
     // mappings
 
+    mapping(address => mapping(address => mapping(uint256 => bool))) public isApprovedForAsset;
     mapping(address => mapping(address => bool)) public override isApprovedForAll; // map of operator approval
     mapping(address => mapping(uint256 => uint256)) public override balanceOf; // map of tokens owned by
     mapping(uint256 => uint256) public totalSupply; // totalSupply per token
@@ -66,6 +67,8 @@ contract ERC1155 is IERC1155 {
 
         uint256 len = ids.length;
         for (uint256 i = 0; i < len; i++) {
+            _requireTransferAllowed(from, isApprovedForAsset[from][msg.sender][ids[i]]);
+
             uint256 id = ids[i];
             uint256 value = values[i];
             balanceOf[from][id] -= value;
@@ -80,7 +83,7 @@ contract ERC1155 is IERC1155 {
     }
 
     function safeTransferFrom(address from, address to, uint256 id, uint256 value, bytes calldata data) external override {
-        _requireTransferAllowed(from, false);
+        _requireTransferAllowed(from, isApprovedForAsset[from][msg.sender][id]);
 
         _transferSingle(from, to, id, value);
 
@@ -101,7 +104,6 @@ contract ERC1155 is IERC1155 {
         bytes calldata data
     ) external override {
         require(ids.length == values.length, "ERC1155: Length mismatch");
-        _requireTransferAllowed(from, false);
 
         _transferBatch(from, to, ids, values);
 

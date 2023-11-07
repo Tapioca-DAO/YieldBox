@@ -84,6 +84,12 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
     // ******************* //
     error InvalidTokenType();
     error NotWrapped();
+    error AmountTooLow();
+    error RefundFailed();
+    error ZeroAddress();
+    error NotSet();
+    error ForbiddenAction();
+    error AssetNotValid();
 
     // ******************* //
     // *** CONSTRUCTOR *** //
@@ -202,6 +208,7 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
         Asset storage asset = assets[assetId];
         if (asset.tokenType != TokenType.ERC20) revert InvalidTokenType();
         if (asset.contractAddress != address(wrappedNative)) revert NotWrapped();
+        if (msg.value < amount) revert AmountTooLow();
 
         // Effects
         uint256 share = amount._toShares(totalSupply[assetId], _tokenBalanceOf(asset), false);
@@ -215,6 +222,11 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
         asset.strategy.deposited(amount);
 
         emit Deposited(msg.sender, msg.sender, to, assetId, amount, share, amountOut, shareOut, false);
+
+        if (msg.value > amount) {
+            (bool success, ) = msg.sender.call{ value: msg.value - amount }(new bytes(0));
+            if (!success) revert RefundFailed();
+        }
 
         return (amount, share);
     }
@@ -234,7 +246,7 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
     ) public allowed(from, assetId) returns (uint256 amountOut, uint256 shareOut) {
         // Checks
         Asset storage asset = assets[assetId];
-        require(asset.tokenType != TokenType.Native, "YieldBox: can't withdraw Native");
+        if (asset.tokenType == TokenType.Native) revert InvalidTokenType();
 
         // Handle ERC721 separately
         if (asset.tokenType == TokenType.ERC721) {
@@ -311,23 +323,25 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
 
     function batchTransfer(address from, address to, uint256[] calldata assetIds_, uint256[] calldata shares_) public {
         uint256 len = assetIds_.length;
-        for (uint256 i = 0; i < len; i++) {
-            _requireTransferAllowed(from, isApprovedForAsset[from][msg.sender][assetIds_[i]]);
+
+        unchecked {
+            for (uint256 i; i < len; i++) {
+                _requireTransferAllowed(from, isApprovedForAsset[from][msg.sender][assetIds_[i]]);
+            }
         }
 
         _transferBatch(from, to, assetIds_, shares_);
     }
 
     function _transferBatch(address from, address to, uint256[] calldata ids, uint256[] calldata values) internal override {
-        require(to != address(0), "No 0 address");
+        if (to == address(0)) revert ZeroAddress();
 
         uint256 len = ids.length;
-        for (uint256 i = 0; i < len; i++) {
-            uint256 id = ids[i];
-            _requireTransferAllowed(from, isApprovedForAsset[from][msg.sender][id]);
-            uint256 value = values[i];
-            balanceOf[from][id] -= value;
-            balanceOf[to][id] += value;
+        unchecked {
+            for (uint256 i; i < len; i++) {
+                balanceOf[from][ids[i]] -= values[i];
+                balanceOf[to][ids[i]] += values[i];
+            }
         }
 
         emit TransferBatch(msg.sender, from, to, ids, values);
@@ -339,20 +353,15 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
     /// @param tos The receivers of the tokens.
     /// @param shares The amount of `token` in shares for each receiver in `tos`.
     function transferMultiple(address from, address[] calldata tos, uint256 assetId, uint256[] calldata shares) public allowed(from, assetId) {
-        // Checks
         uint256 len = tos.length;
-        for (uint256 i = 0; i < len; i++) {
-            require(tos[i] != address(0), "YieldBox: to not set"); // To avoid a bad UI from burning funds
-        }
-
-        // Effects
         uint256 _totalShares;
-        for (uint256 i = 0; i < len; i++) {
-            address to = tos[i];
-            uint256 share_ = shares[i];
-            balanceOf[to][assetId] += share_;
-            _totalShares += share_;
-            emit TransferSingle(msg.sender, from, to, assetId, share_);
+        unchecked {
+            for (uint256 i; i < len; i++) {
+                if (tos[i] == address(0)) revert ZeroAddress();
+                balanceOf[tos[i]][assetId] += shares[i];
+                _totalShares += shares[i];
+                emit TransferSingle(msg.sender, from, tos[i], assetId, shares[i]);
+            }
         }
         balanceOf[from][assetId] -= _totalShares;
     }
@@ -362,8 +371,8 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
     /// @param approved True/False
     function setApprovalForAll(address operator, bool approved) external override {
         // Checks
-        require(operator != address(0), "YieldBox: operator not set"); // Important for security
-        require(operator != address(this), "YieldBox: can't approve yieldBox");
+        if (operator == address(0)) revert NotSet();
+        if (operator == address(this)) revert ForbiddenAction();
 
         // Effects
         _setApprovalForAll(msg.sender, operator, approved);
@@ -384,8 +393,8 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
     /// @param approved True/False
     function setApprovalForAsset(address operator, uint256 assetId, bool approved) external override {
         // Checks
-        require(operator != address(0), "YieldBox: operator not set"); // Important for security
-        require(operator != address(this), "YieldBox: can't approve yieldBox");
+        if (operator == address(0)) revert NotSet();
+        if (operator == address(this)) revert ForbiddenAction();
 
         // Effects
         _setApprovalForAsset(msg.sender, operator, assetId, approved);
@@ -397,7 +406,7 @@ contract YieldBox is YieldBoxPermit, BoringBatchable, NativeTokenFactory, ERC721
     /// @param assetId The asset id  to update approval status for
     /// @param approved True/False
     function _setApprovalForAsset(address _owner, address operator, uint256 assetId, bool approved) internal override {
-        require(assetId < assetCount(), "YieldBox: asset not valid");
+        if (assetId >= assetCount()) revert AssetNotValid();
         isApprovedForAsset[_owner][operator][assetId] = approved;
         emit ApprovalForAsset(_owner, operator, assetId, approved);
     }
