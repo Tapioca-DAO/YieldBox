@@ -26,20 +26,14 @@ contract DummyERC1155Impl {
 
     // Mapping from account to operator approvals
     // mapping(address => mapping(address => bool)) private _operatorApprovals;
-    
+
     function balanceOf(address owner, uint256 tokenId) external view returns (uint256) {
         require(owner != address(0), "ERC1155: Zero Address is invalid");
         return _balances[tokenId][owner];
     }
 
     //Not so Safe transfers
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes calldata data
-    ) external {
+    function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes calldata data) external {
         require(to != address(0));
 
         // No approval checks
@@ -49,19 +43,13 @@ contract DummyERC1155Impl {
         // DOES NOT VERIFY
     }
 
-    function safeBatchTransferFrom(
-        address from,
-        address to,
-        uint256[] calldata ids,
-        uint256[] calldata amounts,
-        bytes calldata data
-    ) external {
+    function safeBatchTransferFrom(address from, address to, uint256[] calldata ids, uint256[] calldata amounts, bytes calldata data) external {
         require(to != address(0));
 
         // No approval checks
 
-        for (uint256 i = 0; i < ids.length; i++) {
-            _transferFrom(from, to, ids[i], amounts[i]);            
+        for (uint256 i; i < ids.length; i++) {
+            _transferFrom(from, to, ids[i], amounts[i]);
         }
 
         // DOES NOT VERIFY
@@ -72,24 +60,17 @@ contract DummyERC1155Impl {
         _balances[id][to] = _balances[id][to].add(amount);
     }
 
-    function _setApprovalForAll(
-        address owner,
-        address operator,
-        bool approved
-    ) internal virtual {
+    function _setApprovalForAll(address owner, address operator, bool approved) internal virtual {
         require(owner != operator, "ERC1155: setting approval status for self");
         _operatorApprovals[owner][operator] = approved;
     }
-
-
-
 }
 
 contract DummyMintableERC1155Impl is DummyERC1155Impl {
     address public minter;
 
     modifier onlyMinter() {
-        require (msg.sender == minter, "Mint callable by minter only");
+        require(msg.sender == minter, "Mint callable by minter only");
         _;
     }
 
@@ -97,21 +78,12 @@ contract DummyMintableERC1155Impl is DummyERC1155Impl {
     //     minter = _minter;
     // }
 
-    function _mint(
-        address to,
-        uint256 id,
-        uint256 value
-    ) internal {
+    function _mint(address to, uint256 id, uint256 value) internal {
         require(to != address(0), "No 0 address");
         _balances[id][to] += value;
     }
 
-    function mint(
-        address to,
-        uint256 id,
-        uint256 value
-    ) external onlyMinter() {
+    function mint(address to, uint256 id, uint256 value) external onlyMinter {
         _mint(to, id, value);
     }
-
 }
