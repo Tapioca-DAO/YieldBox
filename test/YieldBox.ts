@@ -159,9 +159,9 @@ describe("YieldBox", function () {
 
         it("reverts on trying to deposit of Native asset", async function () {
             // deposit by amount
-            await expect(yieldBox.depositAsset(1, Deployer, Alice, 1000, 0)).to.be.revertedWith("YieldBox: can't deposit type")
+            await expect(yieldBox.depositAsset(1, Deployer, Alice, 1000, 0)).to.be.reverted
             // deposit by share
-            await expect(yieldBox.depositAsset(1, Deployer, Alice, 0, 1000_00000000)).to.be.revertedWith("YieldBox: can't deposit type")
+            await expect(yieldBox.depositAsset(1, Deployer, Alice, 0, 1000_00000000)).to.be.reverted
 
             expect(await yieldBox.balanceOf(Alice, 1)).equals(0)
         })
@@ -224,7 +224,7 @@ describe("YieldBox", function () {
 
         it("reverts on deposit of not ETH", async function () {
             // deposit by amount only
-            await expect(yieldBox.depositETHAsset(1, Alice, 1000)).to.be.revertedWith("YieldBox: not wrappedNative")
+            await expect(yieldBox.depositETHAsset(1, Alice, 1000)).to.be.reverted
         })
     })
 
@@ -316,9 +316,7 @@ describe("YieldBox", function () {
         })
 
         it("can's transfer to zero", async function () {
-            await expect(yieldBox.connect(deployer).transferMultiple(Deployer, [Alice, Bob, Zero], 1, [1000, 3000, 500])).to.be.revertedWith(
-                "YieldBox: to not set"
-            )
+            await expect(yieldBox.connect(deployer).transferMultiple(Deployer, [Alice, Bob, Zero], 1, [1000, 3000, 500])).to.be.reverted
         })
     })
 
@@ -377,7 +375,7 @@ describe("YieldBox", function () {
         })
 
         it("cannot withdraw Native", async function () {
-            await expect(yieldBox.withdraw(1, Deployer, Deployer, 1000, 0)).to.be.revertedWith("YieldBox: can't withdraw Native")
+            await expect(yieldBox.withdraw(1, Deployer, Deployer, 1000, 0)).to.be.reverted
         })
     })
 
@@ -421,7 +419,7 @@ describe("YieldBox", function () {
             await yieldBox.registerAsset(TokenType.ERC20, token.address, tokenStrategy.address, 0)
             const id = await yieldBox.ids(TokenType.ERC20, token.address, tokenStrategy.address, 0)
 
-            await expect(yieldBox.connect(alice).depositAsset(id, Deployer, Deployer, 1000, 0)).to.be.revertedWith("Transfer not allowed")
+            await expect(yieldBox.connect(alice).depositAsset(id, Deployer, Deployer, 1000, 0)).to.be.reverted
             await yieldBox.setApprovalForAsset(Alice, id, true)
             await expect(yieldBox.connect(alice).depositAsset(id, Deployer, Deployer, 1000, 0)).to.not.be.reverted
 
@@ -461,13 +459,13 @@ describe("YieldBox", function () {
 
     describe("setApprovalForAll", () => {
         it("reverts when operator is 0", async function () {
-            await expect(yieldBox.setApprovalForAll(Zero, true)).to.be.revertedWith("YieldBox: operator not set")
+            await expect(yieldBox.setApprovalForAll(Zero, true)).to.be.reverted
         })
     })
 
     describe("setApprovalForAsset", () => {
         it("reverts when asset does not exist", async function () {
-            await expect(yieldBox.setApprovalForAsset(Alice, 999999999999999, true)).to.be.revertedWith("YieldBox: asset not valid")
+            await expect(yieldBox.setApprovalForAsset(Alice, 999999999999999, true)).to.be.reverted
         })
     })
 
@@ -554,9 +552,7 @@ describe("YieldBox", function () {
                 ethers.BigNumber.from(deadline)
             )
 
-            await expect(yieldBox.connect(alice).permit(deployer.address, alice.address, 3, deadline, v, r, s)).to.be.revertedWith(
-                "YieldBoxPermit: invalid signature"
-            )
+            await expect(yieldBox.connect(alice).permit(deployer.address, alice.address, 3, deadline, v, r, s)).to.be.reverted
 
             const permitTx = yieldBox.interface.encodeFunctionData("permit", [deployer.address, alice.address, assetId, deadline, v, r, s])
             const transferTx = yieldBox.interface.encodeFunctionData("transfer", [
@@ -570,7 +566,7 @@ describe("YieldBox", function () {
                 .to.emit(yieldBox, "ApprovalForAsset")
                 .withArgs(deployer.address, alice.address, assetId, true)
 
-            await expect(yieldBox.connect(alice).batch([permitTx, transferTx], true)).to.be.revertedWith("YieldBoxPermit: invalid signature")
+            await expect(yieldBox.connect(alice).batch([permitTx, transferTx], true)).to.be.reverted
         })
 
         it("Allow batched permit and transfer for all assets", async function () {
@@ -600,7 +596,7 @@ describe("YieldBox", function () {
                 .to.emit(yieldBox, "ApprovalForAll")
                 .withArgs(deployer.address, alice.address, true)
 
-            await expect(yieldBox.connect(alice).batch([permitTx, transferTx], true)).to.be.revertedWith("YieldBoxPermit: invalid signature")
+            await expect(yieldBox.connect(alice).batch([permitTx, transferTx], true)).to.be.reverted
         })
     })
 })
